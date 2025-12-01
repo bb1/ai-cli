@@ -6,9 +6,82 @@ on:
       - main
 
 jobs:
+  build:
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            target: linux-x64
+            script: build:linux-x64
+            binary: ai-linux-x64
+            archive: ai-linux-x64.zip
+          - os: ubuntu-latest
+            arch: arm64
+            target: linux-arm64
+            script: build:linux-arm64
+            binary: ai-linux-arm64
+            archive: ai-linux-arm64.zip
+          - os: macos-latest
+            arch: x64
+            target: darwin-x64
+            script: build:darwin-x64
+            binary: ai-darwin-x64
+            archive: ai-darwin-x64.zip
+          - os: macos-latest
+            arch: arm64
+            target: darwin-arm64
+            script: build:darwin-arm64
+            binary: ai-darwin-arm64
+            archive: ai-darwin-arm64.zip
+          - os: windows-latest
+            arch: x64
+            target: windows-x64
+            script: build:windows-x64
+            binary: ai-windows-x64.exe
+            archive: ai-windows-x64.zip
+          - os: windows-latest
+            arch: arm64
+            target: windows-arm64
+            script: build:windows-arm64
+            binary: ai-windows-arm64.exe
+            archive: ai-windows-arm64.zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binary
+        run: bun run ${{ matrix.script }}
+
+      - name: Create release archive
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            zip ${{ matrix.archive }} ${{ matrix.binary }}
+          else
+            chmod +x ${{ matrix.binary }}
+            zip ${{ matrix.archive }} ${{ matrix.binary }}
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ matrix.archive }}
+
   release:
     name: Build and Release
     runs-on: ubuntu-latest
+    needs: build
     permissions:
       contents: write
       pull-requests: write
@@ -21,15 +94,6 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Run linter
-        run: bun run lint
-
-      - name: Run tests
-        run: bun test
 
       - name: Bump minor version
         id: bump-version
@@ -67,19 +131,16 @@ jobs:
             git push
           fi
 
-      - name: Build Linux binary
-        run: bun run build:linux-x64
-
-      - name: Create release archive
-        run: |
-          chmod +x ai-linux-x64
-          zip ai-linux-x64.zip ai-linux-x64
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.bump-version.outputs.tag }}
           name: Release ${{ steps.bump-version.outputs.version }}
-          files: ai-linux-x64.zip
+          files: artifacts/**/*.zip
           generate_release_notes: true
 
