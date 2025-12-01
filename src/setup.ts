@@ -58,23 +58,24 @@ async function fetchModels(url: string): Promise<string[]> {
 	}
 }
 
-function sortModelsByPriority(models: string[]): string[] {
-	const scored = models.map((model) => {
-		const modelLower = model.toLowerCase();
-		let priority = MODEL_PRIORITY.length + 1;
+function findPreselectedModelIndex(models: string[]): number {
+	let bestIndex = 0;
+	let bestPriority = MODEL_PRIORITY.length + 1;
 
-		for (let i = 0; i < MODEL_PRIORITY.length; i++) {
-			if (modelLower.includes(MODEL_PRIORITY[i])) {
-				priority = i;
+	for (let i = 0; i < models.length; i++) {
+		const modelLower = models[i].toLowerCase();
+		for (let j = 0; j < MODEL_PRIORITY.length; j++) {
+			if (modelLower.includes(MODEL_PRIORITY[j])) {
+				if (j < bestPriority) {
+					bestPriority = j;
+					bestIndex = i;
+				}
 				break;
 			}
 		}
+	}
 
-		return { model, priority };
-	});
-
-	scored.sort((a, b) => a.priority - b.priority);
-	return scored.map((s) => s.model);
+	return bestIndex;
 }
 
 async function promptForOllamaUrl(): Promise<string> {
@@ -97,39 +98,152 @@ async function promptForOllamaUrl(): Promise<string> {
 }
 
 async function promptForModel(models: string[]): Promise<string> {
-	const sortedModels = sortModelsByPriority(models);
+	const preselectedIndex = findPreselectedModelIndex(models);
+	let selectedIndex = preselectedIndex;
 
+	// ANSI escape codes for cursor control
+	const cursorUp = (n: number) => `\x1b[${n}A`;
+	const cursorDown = (n: number) => `\x1b[${n}B`;
+	const clearLine = "\x1b[2K";
+	const cursorLeft = "\x1b[G";
+	const hideCursor = "\x1b[?25l";
+	const showCursor = "\x1b[?25h";
+	const bgBlue = "\x1b[44m";
+	const bgReset = "\x1b[49m";
+	const reset = "\x1b[0m";
+	const boldCode = "\x1b[1m";
+	const greenCode = "\x1b[32m";
+	const cyanCode = "\x1b[36m";
+
+	const renderList = (isRedraw = false): void => {
+		process.stdout.write(hideCursor);
+
+		if (isRedraw) {
+			// Move cursor back to start of first model line
+			// We're on the instruction line (line models.length + 1), move up models.length to get to first model
+			process.stdout.write(cursorUp(models.length));
+		}
+
+		// Redraw all model lines
+		for (let i = 0; i < models.length; i++) {
+			process.stdout.write("\r");
+			process.stdout.write(clearLine);
+			process.stdout.write(reset); // Reset all formatting at start of line
+			
+			const isSelected = i === selectedIndex;
+			const isPreselected = i === preselectedIndex && preselectedIndex !== selectedIndex;
+			
+			// Apply background color for selected row (before any text)
+			if (isSelected) {
+				process.stdout.write(bgBlue);
+			}
+			
+			// Write prefix with colors (but don't reset if background is active)
+			if (isSelected) {
+				process.stdout.write(boldCode); // Bold for selected arrow
+				process.stdout.write(greenCode);
+				process.stdout.write("▶ "); // Bolder arrow character
+			} else if (isPreselected) {
+				process.stdout.write(cyanCode);
+				process.stdout.write("  ");
+			} else {
+				process.stdout.write("  ");
+			}
+			
+			// Write model number and name (keep background if selected)
+			process.stdout.write(`${i + 1}. ${models[i]}`);
+			
+			// Write suffix if preselected (keep background if selected)
+			if (isPreselected) {
+				process.stdout.write(cyanCode);
+				process.stdout.write(" (recommended)");
+			}
+			
+			// Reset all formatting at end of line
+			process.stdout.write(reset);
+			
+			// Always write newline to move to next line
+			process.stdout.write("\n");
+		}
+
+		// Redraw instruction line (we're now on the instruction line after the loop)
+		process.stdout.write("\r");
+		process.stdout.write(clearLine);
+		process.stdout.write(cyan("Use ↑/↓ to navigate, Enter to confirm"));
+		// CRITICAL: Don't write newline - stay on this line
+		process.stdout.write(showCursor);
+	};
+
+	// Initial render
 	console.log(bold("\n📦 Available models:\n"));
+	renderList();
 
-	for (let i = 0; i < sortedModels.length; i++) {
-		const isRecommended = i === 0;
-		const prefix = isRecommended ? green("→ ") : "  ";
-		const suffix = isRecommended ? green(" (recommended)") : "";
-		console.log(`${prefix}${i + 1}. ${sortedModels[i]}${suffix}`);
+	// Set stdin to raw mode for keypress handling
+	const wasRaw = (process.stdin as { isRaw?: boolean }).isRaw ?? false;
+	if (!wasRaw && typeof (process.stdin as { setRawMode?: (mode: boolean) => void }).setRawMode === "function") {
+		(process.stdin as { setRawMode: (mode: boolean) => void }).setRawMode(true);
 	}
 
-	console.log("");
+	try {
+		const reader = Bun.stdin.stream().getReader();
+		const decoder = new TextDecoder();
+		let buffer = "";
 
-	while (true) {
-		const input = await readLine(cyan("Select a model (number or name): "));
-		const trimmed = input.trim();
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
 
-		// Check if input is a number
-		const num = Number.parseInt(trimmed, 10);
-		if (!Number.isNaN(num) && num >= 1 && num <= sortedModels.length) {
-			return sortedModels[num - 1];
+			buffer += decoder.decode(value, { stream: true });
+
+			// Process complete key sequences
+			while (buffer.length > 0) {
+				// Check for arrow keys (ESC [ A = up, ESC [ B = down)
+				if (buffer.startsWith("\x1b[")) {
+					if (buffer.length < 3) break; // Need more data
+
+					const key = buffer[2];
+					if (key === "A") {
+						// Up arrow
+						if (selectedIndex > 0) {
+							selectedIndex--;
+							renderList(true);
+						}
+						buffer = buffer.slice(3);
+					} else if (key === "B") {
+						// Down arrow
+						if (selectedIndex < models.length - 1) {
+							selectedIndex++;
+							renderList(true);
+						}
+						buffer = buffer.slice(3);
+					} else {
+						// Other escape sequence, consume it
+						buffer = buffer.slice(3);
+					}
+				} else if (buffer[0] === "\r" || buffer[0] === "\n") {
+					// Enter key
+					reader.releaseLock();
+					process.stdout.write("\n");
+					return models[selectedIndex];
+				} else if (buffer[0] === "\x03") {
+					// Ctrl+C
+					reader.releaseLock();
+					process.stdout.write("\n");
+					process.exit(130);
+				} else {
+					// Unknown key, consume one character
+					buffer = buffer.slice(1);
+				}
+			}
 		}
 
-		// Check if input matches a model name
-		const matchedModel = sortedModels.find(
-			(m) => m.toLowerCase() === trimmed.toLowerCase() || m.toLowerCase().includes(trimmed.toLowerCase()),
-		);
-
-		if (matchedModel) {
-			return matchedModel;
+		reader.releaseLock();
+		return models[selectedIndex];
+	} finally {
+		if (!wasRaw && typeof (process.stdin as { setRawMode?: (mode: boolean) => void }).setRawMode === "function") {
+			(process.stdin as { setRawMode: (mode: boolean) => void }).setRawMode(false);
 		}
-
-		console.log(yellow(`Invalid selection. Please enter 1-${sortedModels.length} or a model name.`));
+		process.stdout.write(showCursor);
 	}
 }
 
