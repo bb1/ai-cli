@@ -1,0 +1,98 @@
+# AI CLI Project Rules
+
+## Project Overview
+This is a Bun-native CLI tool that uses Ollama to generate shell commands from natural language input.
+
+## Technology Stack
+- **Runtime**: Bun (not Node.js)
+- **Language**: TypeScript with strict mode
+- **Testing**: Bun's built-in test runner (`bun test`)
+- **Linting**: Biome
+- **Config Format**: TOML for `.ai-config.toml`
+
+## Code Conventions
+
+### Bun-Native APIs
+Always prefer Bun-native APIs over Node.js equivalents:
+- Use `Bun.file()` and `Bun.write()` for file operations
+- Use `Bun.spawn()` for process execution
+- Use `Bun.which()` for binary lookup
+- Use `fetch()` (globally available) for HTTP requests
+- Use `bun:test` for testing
+
+### TypeScript
+- Use strict mode (`"strict": true` in tsconfig)
+- Prefer explicit types over `any`
+- Use `type` imports for type-only imports
+- Use `.ts` extensions in import paths
+
+### File Structure
+```
+src/
+├── index.ts      # CLI entry point
+├── config.ts     # Configuration management
+├── setup.ts      # Setup wizard
+├── ollama.ts     # Ollama API client
+├── executor.ts   # Command execution
+├── safety.ts     # Safety checks
+├── parser.ts     # Response parsing
+├── prompt.ts     # Prompt templates
+├── agent.ts      # Agent mode
+└── utils.ts      # Shared utilities
+```
+
+### Error Handling
+- Use stderr for error messages (`console.error`)
+- Provide clear, actionable error messages
+- Exit with non-zero codes on failure
+
+### User Interaction
+- Use colored output for better UX (see `utils.ts`)
+- Red for errors and warnings
+- Green for success
+- Cyan for info
+- Yellow for caution
+
+### Safety
+- Always check commands for dangerous patterns before execution
+- Show RED warnings for potentially destructive commands
+- Require explicit user confirmation before executing
+
+### Testing
+- Test files go in `tests/` directory
+- Name test files as `*.test.ts`
+- Use descriptive test names
+- Test edge cases and error conditions
+
+## Commands
+- `bun run dev` - Run in development with watch mode
+- `bun run build` - Build Linux x64 binary
+- `bun run lint` - Run linter
+- `bun run test` - Run tests
+
+## LLM Response Format
+The CLI expects responses in CSV format:
+```
+command;tools;comment
+```
+- `command`: The shell command to execute
+- `tools`: Space-separated list of binaries used
+- `comment`: Brief explanation
+
+## Configuration
+Config is stored in `~/.ai-config.toml` or `./.ai-config.toml`:
+```toml
+ollama_url = "http://localhost:11434"
+model = "qwen2.5-coder"
+```
+
+## Dependencies
+- When installing new dependencies ALWAYS check for the latest version first and pin this version
+- `smol-toml` - TOML parsing (Bun compile compatible)
+- `@biomejs/biome` v2.x - Linting (dev)
+
+## Build Notes
+- Avoid `node:*` imports for compiled binary compatibility
+- Use environment variables (`$HOME`) instead of `node:os`
+- Use `Bun.file().exists()` instead of `node:fs.existsSync`
+

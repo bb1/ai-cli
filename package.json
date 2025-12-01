@@ -1,0 +1,25 @@
+{
+  "name": "ai-cli",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.8",
+    "@types/bun": "^1.3.3"
+  },
+  "bin": {
+    "ai": "src/index.ts"
+  },
+  "description": "Bun-native CLI tool that uses Ollama to generate shell commands from natural language",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --compile --outfile=ai",
+    "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile=ai-linux-x64",
+    "lint": "bun x @biomejs/biome check ./src",
+    "lint:fix": "bun x @biomejs/biome check --write ./src",
+    "test": "bun test"
+  },
+  "type": "module",
+  "dependencies": {
+    "smol-toml": "^1.5.2"
+  }
+}
