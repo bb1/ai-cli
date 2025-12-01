@@ -6,21 +6,23 @@ import { buildAgentSystemPrompt } from "./prompt.ts";
 import { checkCommandsSafety, formatSafetyWarnings } from "./safety.ts";
 import { bold, cyan, dim, green, logError, readLine, red, yellow } from "./utils.ts";
 
-const MAX_ITERATIONS = 10;
-
 interface AgentState {
 	iteration: number;
 	lastOutput: string;
 	originalQuery: string;
 }
 
+const MAX_AGENT_ITERATIONS = 10;
+
 /**
  * Run the agent mode - executes commands and feeds output back to LLM
  */
 export async function runAgentMode(config: Config, query: string): Promise<void> {
+	const maxCommands = config.agent.max_commands;
+
 	console.log(bold(cyan("\n🤖 Agent Mode Activated\n")));
 	console.log(dim(`Task: ${query}`));
-	console.log(dim(`Max iterations: ${MAX_ITERATIONS}\n`));
+	console.log(dim(`Max commands: ${maxCommands}, Max iterations: ${MAX_AGENT_ITERATIONS}\n`));
 
 	const state: AgentState = {
 		iteration: 0,
@@ -28,10 +30,10 @@ export async function runAgentMode(config: Config, query: string): Promise<void>
 		originalQuery: query,
 	};
 
-	while (state.iteration < MAX_ITERATIONS) {
+	while (state.iteration < MAX_AGENT_ITERATIONS) {
 		state.iteration++;
 
-		console.log(yellow(`\n━━━ Iteration ${state.iteration}/${MAX_ITERATIONS} ━━━\n`));
+		console.log(yellow(`\n━━━ Iteration ${state.iteration}/${MAX_AGENT_ITERATIONS} ━━━\n`));
 
 		// Build prompt based on state
 		let response: string;
@@ -58,7 +60,7 @@ export async function runAgentMode(config: Config, query: string): Promise<void>
 		}
 
 		// Parse the response
-		const parsed = parseResponse(response);
+		const parsed = parseResponse(response, maxCommands);
 
 		if (parsed.isError) {
 			logError(parsed.errorMessage || "Failed to parse response");
@@ -142,7 +144,7 @@ export async function runAgentMode(config: Config, query: string): Promise<void>
 		state.lastOutput = combinedOutput || "Command completed with no output.";
 	}
 
-	if (state.iteration >= MAX_ITERATIONS) {
+	if (state.iteration >= MAX_AGENT_ITERATIONS) {
 		console.log(yellow(bold("\n⚠️ Maximum iterations reached\n")));
 		console.log(dim("The agent has reached the iteration limit."));
 		console.log(dim("You can run the agent again to continue the task."));

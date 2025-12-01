@@ -90,7 +90,15 @@ Configuration is stored in `~/.ai-config.toml`:
 ```toml
 ollama_url = "http://localhost:11434"
 model = "qwen2.5-coder"
+
+[default]
+max_commands = 7    # Max commands per LLM response (standard mode)
+
+[agent]
+max_commands = 10   # Max commands per LLM response (agent mode, inherits from default if not set)
 ```
+
+The `[agent]` section inherits from `[default]` - any setting not specified in `[agent]` will use the value from `[default]`.
 
 You can also create a local `.ai-config.toml` in your project directory to override the global config.
 

@@ -55,7 +55,7 @@ async function runSingleQuery(config: Config, query: string): Promise<void> {
 			return;
 		}
 
-		const parsed = parseResponse(response);
+		const parsed = parseResponse(response, config.default.max_commands);
 
 		if (parsed.isError) {
 			console.log(yellow(`\n${parsed.errorMessage}`));
@@ -78,7 +78,7 @@ async function runSingleQuery(config: Config, query: string): Promise<void> {
 				logInfo("Retrying with alternative tools...");
 				try {
 					response = await retryWithMissingTool(config, currentQuery, validation.missing);
-					const retryParsed = parseResponse(response);
+					const retryParsed = parseResponse(response, config.default.max_commands);
 
 					if (!retryParsed.isError && retryParsed.commands.length > 0) {
 						const retryTools = extractAllTools(retryParsed.commands);

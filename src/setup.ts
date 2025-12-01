@@ -169,13 +169,14 @@ export async function runSetup(): Promise<Config> {
 	const config: Config = {
 		ollama_url: ollamaUrl,
 		model: selectedModel,
+		default: { max_commands: 7 },
+		agent: { max_commands: 10 },
 	};
 
-	// Save config
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
-	console.log(cyan(`  Ollama URL: ${config.ollama_url}`));
-	console.log(cyan(`  Model: ${config.model}\n`));
+	console.log(cyan(`  Ollama URL: ${ollamaUrl}`));
+	console.log(cyan(`  Model: ${selectedModel}\n`));
 
 	return config;
 }

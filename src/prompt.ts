@@ -3,7 +3,7 @@ import { getOSInfo } from "./utils.ts";
 /**
  * Build the system prompt for command generation
  */
-export function buildSystemPrompt(): string {
+export function buildSystemPrompt(maxCommands = 7): string {
 	const { platform, shell } = getOSInfo();
 
 	return `You are a CLI command generator. Return ONLY CSV format.
@@ -16,7 +16,7 @@ Rules:
 - tools = space-separated binary names used in the command (e.g., "find grep" or "curl jq")
 - comment = brief explanation
 - If the task is impossible or unclear, leave command and tools empty, fill only comment
-- For complex tasks requiring multiple steps, output up to 7 lines (one command per line)
+- For complex tasks requiring multiple steps, output up to ${maxCommands} lines (one command per line)
 - Be concise, use standard ${platform} tools
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers

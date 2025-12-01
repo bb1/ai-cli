@@ -84,6 +84,12 @@ Config is stored in `~/.ai-config.toml` or `./.ai-config.toml`:
 ```toml
 ollama_url = "http://localhost:11434"
 model = "qwen2.5-coder"
+
+[default]
+max_commands = 7
+
+[agent]
+max_commands = 10  # Inherits from [default] if not set
 ```
 
 ## Dependencies

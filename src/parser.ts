@@ -60,10 +60,12 @@ function parseLine(line: string): ParsedCommand | null {
 	};
 }
 
+const DEFAULT_MAX_COMMANDS = 7;
+
 /**
  * Parse the LLM response into structured commands
  */
-export function parseResponse(response: string): ParseResult {
+export function parseResponse(response: string, maxCommands: number = DEFAULT_MAX_COMMANDS): ParseResult {
 	const lines = response.split("\n").filter((line) => line.trim());
 
 	// Check if the response indicates an error or inability to help
@@ -89,8 +91,8 @@ export function parseResponse(response: string): ParseResult {
 			commands.push(parsed);
 		}
 
-		// Limit to 7 commands as per spec
-		if (commands.length >= 7) {
+		// Limit commands based on config
+		if (commands.length >= maxCommands) {
 			break;
 		}
 	}
