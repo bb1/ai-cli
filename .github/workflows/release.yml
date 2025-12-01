@@ -42,12 +42,6 @@ jobs:
             script: build:windows-x64
             binary: ai-windows-x64.exe
             archive: ai-windows-x64.zip
-          - os: windows-latest
-            arch: arm64
-            target: windows-arm64
-            script: build:windows-arm64
-            binary: ai-windows-arm64.exe
-            archive: ai-windows-arm64.zip
 
     steps:
       - name: Checkout code
@@ -62,15 +56,18 @@ jobs:
       - name: Build binary
         run: bun run ${{ matrix.script }}
 
-      - name: Create release archive
+      - name: Create release archive (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            zip ${{ matrix.archive }} ${{ matrix.binary }}
-          else
-            chmod +x ${{ matrix.binary }}
-            zip ${{ matrix.archive }} ${{ matrix.binary }}
-          fi
+          chmod +x ${{ matrix.binary }}
+          zip ${{ matrix.archive }} ${{ matrix.binary }}
+
+      - name: Create release archive (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ${{ matrix.binary }} -DestinationPath ${{ matrix.archive }} -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

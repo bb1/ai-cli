@@ -18,7 +18,6 @@
     "build:darwin-x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile=ai-darwin-x64",
     "build:darwin-arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile=ai-darwin-arm64",
     "build:windows-x64": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile=ai-windows-x64.exe",
-    "build:windows-arm64": "bun build src/index.ts --compile --target=bun-windows-arm64 --outfile=ai-windows-arm64.exe",
     "lint": "bun x @biomejs/biome check ./src",
     "lint:fix": "bun x @biomejs/biome check --write ./src",
     "test": "bun test"
