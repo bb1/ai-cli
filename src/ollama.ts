@@ -25,13 +25,13 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers`;
 
-	const response = await fetch(`${config.ollama_url}/api/generate`, {
+	const response = await fetch(`${config.ollama.url}/api/generate`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: config.model,
+			model: config.ollama.model,
 			prompt: prompt,
 			system: systemPrompt || defaultSystemPrompt,
 			stream: false,
@@ -74,13 +74,13 @@ Rules:
 Previous command output:
 ${previousOutput}`;
 
-	const response = await fetch(`${config.ollama_url}/api/generate`, {
+	const response = await fetch(`${config.ollama.url}/api/generate`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: config.model,
+			model: config.ollama.model,
 			prompt: prompt,
 			system: systemPrompt,
 			stream: false,
@@ -118,13 +118,13 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers`;
 
-	const response = await fetch(`${config.ollama_url}/api/generate`, {
+	const response = await fetch(`${config.ollama.url}/api/generate`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: config.model,
+			model: config.ollama.model,
 			prompt: originalPrompt,
 			system: systemPrompt,
 			stream: false,

@@ -1,6 +1,11 @@
 import * as TOML from "smol-toml";
 import { getHomeDir } from "./utils.ts";
 
+export interface OllamaConfig {
+	url: string;
+	model: string;
+}
+
 export interface DefaultConfig {
 	max_commands: number;
 }
@@ -11,8 +16,7 @@ export interface AgentConfig extends DefaultConfig {
 }
 
 export interface Config {
-	ollama_url: string;
-	model: string;
+	ollama: OllamaConfig;
 	default: DefaultConfig;
 	agent: AgentConfig;
 }
@@ -48,6 +52,7 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 function mergeWithDefaults(parsed: Record<string, unknown>): Config {
+	const ollamaSection = parsed.ollama as OllamaConfig;
 	const defaultSection = parsed.default as Partial<DefaultConfig> | undefined;
 	const agentSection = parsed.agent as Partial<AgentConfig> | undefined;
 
@@ -64,8 +69,7 @@ function mergeWithDefaults(parsed: Record<string, unknown>): Config {
 	};
 
 	return {
-		ollama_url: parsed.ollama_url as string,
-		model: parsed.model as string,
+		ollama: ollamaSection,
 		default: defaultConfig,
 		agent: agentConfig,
 	};
@@ -108,8 +112,7 @@ export async function saveConfig(config: Config, global = true): Promise<void> {
 	const targetPath = global ? paths.global : paths.local;
 
 	const tomlContent = TOML.stringify({
-		ollama_url: config.ollama_url,
-		model: config.model,
+		ollama: config.ollama,
 		default: config.default,
 		agent: config.agent,
 	});
@@ -122,7 +125,13 @@ function validateConfigRequired(config: unknown): boolean {
 	}
 
 	const c = config as Record<string, unknown>;
-	return typeof c.ollama_url === "string" && typeof c.model === "string";
+
+	// Validate [ollama] section is present with required fields
+	if (typeof c.ollama !== "object" || c.ollama === null) {
+		return false;
+	}
+	const ollama = c.ollama as Record<string, unknown>;
+	return typeof ollama.url === "string" && typeof ollama.model === "string";
 }
 
 export function validateConfig(config: unknown): config is Config {

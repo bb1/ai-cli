@@ -17,22 +17,26 @@ async function deleteFile(path: string): Promise<void> {
 describe("validateConfig", () => {
 	test("validates correct config", () => {
 		const config = {
-			ollama_url: "http://localhost:11434",
-			model: "llama3",
+			ollama: { url: "http://localhost:11434", model: "llama3" },
 		};
 		expect(validateConfig(config)).toBe(true);
 	});
 
-	test("rejects config without ollama_url", () => {
+	test("rejects config without ollama section", () => {
+		const config = {};
+		expect(validateConfig(config)).toBe(false);
+	});
+
+	test("rejects config without ollama.url", () => {
 		const config = {
-			model: "llama3",
+			ollama: { model: "llama3" },
 		};
 		expect(validateConfig(config)).toBe(false);
 	});
 
-	test("rejects config without model", () => {
+	test("rejects config without ollama.model", () => {
 		const config = {
-			ollama_url: "http://localhost:11434",
+			ollama: { url: "http://localhost:11434" },
 		};
 		expect(validateConfig(config)).toBe(false);
 	});
@@ -49,8 +53,7 @@ describe("validateConfig", () => {
 
 	test("rejects config with wrong types", () => {
 		const config = {
-			ollama_url: 123,
-			model: "llama3",
+			ollama: { url: 123, model: "llama3" },
 		};
 		expect(validateConfig(config)).toBe(false);
 	});
@@ -76,8 +79,9 @@ describe("saveConfig and loadConfig", () => {
 
 	test("saves and loads config correctly", async () => {
 		const config: Config = {
-			ollama_url: "http://localhost:11434",
-			model: "test-model",
+			ollama: { url: "http://localhost:11434", model: "test-model" },
+			default: { max_commands: 7 },
+			agent: { max_commands: 10 },
 		};
 
 		// Save to local (non-global) path for testing
@@ -87,8 +91,8 @@ describe("saveConfig and loadConfig", () => {
 		const loaded = await loadConfig();
 
 		expect(loaded).not.toBeNull();
-		expect(loaded?.ollama_url).toBe(config.ollama_url);
-		expect(loaded?.model).toBe(config.model);
+		expect(loaded?.ollama.url).toBe(config.ollama.url);
+		expect(loaded?.ollama.model).toBe(config.ollama.model);
 	});
 
 	test("returns null when no config exists", async () => {

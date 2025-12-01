@@ -5,18 +5,23 @@ const DEFAULT_OLLAMA_URL = "http://localhost:11434";
 
 // Model priority order for automatic selection suggestions
 const MODEL_PRIORITY = [
+	"minimax-m2-gguf",
+	"kimi-k2-thinking",
+	"qwen3-coder",
+	"gpt-oss",
+	"gemma3",
 	"qwen2.5-coder",
-	"qwen-coder",
-	"codellama",
 	"deepseek-coder",
+	"mistral",
 	"llama3.2",
 	"llama3.1",
 	"llama3",
-	"llama2",
+	"codellama",
 	"qwen2.5",
-	"mistral",
 	"gemma2",
+	"qwen-coder",
 	"phi3",
+	"llama2",
 ];
 
 interface OllamaModel {
@@ -167,16 +172,15 @@ export async function runSetup(): Promise<Config> {
 	const selectedModel = await promptForModel(models);
 
 	const config: Config = {
-		ollama_url: ollamaUrl,
-		model: selectedModel,
+		ollama: { url: ollamaUrl, model: selectedModel },
 		default: { max_commands: 7 },
 		agent: { max_commands: 10 },
 	};
 
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
-	console.log(cyan(`  Ollama URL: ${ollamaUrl}`));
-	console.log(cyan(`  Model: ${selectedModel}\n`));
+	console.log(cyan(`  Ollama URL: ${config.ollama.url}`));
+	console.log(cyan(`  Model: ${config.ollama.model}\n`));
 
 	return config;
 }

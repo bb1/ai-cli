@@ -88,7 +88,8 @@ When a command is generated, you'll be prompted:
 Configuration is stored in `~/.ai-config.toml`:
 
 ```toml
-ollama_url = "http://localhost:11434"
+[ollama]
+url = "http://localhost:11434"
 model = "qwen2.5-coder"
 
 [default]
