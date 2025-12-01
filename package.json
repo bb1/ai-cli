@@ -11,7 +11,7 @@
   },
   "description": "Bun-native CLI tool that uses Ollama to generate shell commands from natural language",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
+    "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --compile --outfile=ai",
     "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile=ai-linux-x64",
     "build:linux-arm64": "bun build src/index.ts --compile --target=bun-linux-arm64 --outfile=ai-linux-arm64",
