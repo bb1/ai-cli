@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run linter
+        run: bun run lint
+
+      - name: Run tests
+        run: bun test
+
+      - name: Bump minor version
+        id: bump-version
+        run: |
+          # Read current version
+          VERSION=$(bun -e "const pkg = await Bun.file('package.json').json(); console.log(pkg.version);")
+          echo "Current version: $VERSION"
+          
+          # Bump minor version (e.g., 0.1.0 -> 0.2.0)
+          NEW_VERSION=$(bun -e "
+            const pkg = await Bun.file('package.json').json();
+            const [major, minor, patch] = pkg.version.split('.').map(Number);
+            const newVersion = \`\${major}.\${minor + 1}.0\`;
+            console.log(newVersion);
+          ")
+          echo "New version: $NEW_VERSION"
+          
+          # Update package.json
+          bun -e "
+            const pkg = await Bun.file('package.json').json();
+            pkg.version = '$NEW_VERSION';
+            await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: bump version to ${{ steps.bump-version.outputs.version }}"
+            git push
+          fi
+
+      - name: Build Linux binary
+        run: bun run build:linux-x64
+
+      - name: Create release archive
+        run: |
+          chmod +x ai-linux-x64
+          zip ai-linux-x64.zip ai-linux-x64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump-version.outputs.tag }}
+          name: Release ${{ steps.bump-version.outputs.version }}
+          files: ai-linux-x64.zip
+          generate_release_notes: true
+
