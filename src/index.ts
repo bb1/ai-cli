@@ -9,8 +9,6 @@ import { formatUserQuery } from "./prompt.ts";
 import { runSetup } from "./setup.ts";
 import { bold, cyan, dim, logError, logInfo, logSuccess, yellow } from "./utils.ts";
 
-const VERSION = "1.0.0";
-
 function printHelp(): void {
 	console.log(`
 ${bold("ai")} - Natural language to shell commands using Ollama
@@ -35,8 +33,28 @@ ${bold("OPTIONS:")}
 `);
 }
 
-function printVersion(): void {
-	console.log(`ai v${VERSION}`);
+async function printVersion(): Promise<void> {
+	// In compiled binaries, this will be replaced at build time via --define
+	// In development, fallback to reading package.json
+	let version = process.env.AI_CLI_VERSION;
+	
+	if (!version) {
+		try {
+			// Development mode: read from package.json
+			const packagePath = new URL("../package.json", import.meta.url).pathname;
+			const packageFile = Bun.file(packagePath);
+			if (await packageFile.exists()) {
+				const packageJson = await packageFile.json() as { version?: string };
+				version = packageJson.version || "unknown";
+			}
+			version += " (development)";
+		} catch {
+			// Fallback if package.json can't be read
+			version = "unknown";
+		}
+	}
+	
+	console.log(`ai v${version}`);
 }
 
 async function runSingleQuery(config: Config, query: string): Promise<void> {
@@ -140,7 +158,7 @@ async function main(): Promise<void> {
 	}
 
 	if (args.includes("--version") || args.includes("-v")) {
-		printVersion();
+		await printVersion();
 		return;
 	}
 
