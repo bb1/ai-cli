@@ -1,4 +1,5 @@
 import { type Config, saveConfig } from "./config.ts";
+// biome-ignore lint/correctness/noUnusedImports: cyan is used in multiple places (lines 83, 169, 279, 293, 294)
 import { bold, cyan, green, logError, logInfo, logSuccess, readLine, yellow } from "./utils.ts";
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
@@ -103,13 +104,10 @@ async function promptForModel(models: string[]): Promise<string> {
 
 	// ANSI escape codes for cursor control
 	const cursorUp = (n: number) => `\x1b[${n}A`;
-	const cursorDown = (n: number) => `\x1b[${n}B`;
 	const clearLine = "\x1b[2K";
-	const cursorLeft = "\x1b[G";
 	const hideCursor = "\x1b[?25l";
 	const showCursor = "\x1b[?25h";
 	const bgBlue = "\x1b[44m";
-	const bgReset = "\x1b[49m";
 	const reset = "\x1b[0m";
 	const boldCode = "\x1b[1m";
 	const greenCode = "\x1b[32m";
@@ -129,15 +127,15 @@ async function promptForModel(models: string[]): Promise<string> {
 			process.stdout.write("\r");
 			process.stdout.write(clearLine);
 			process.stdout.write(reset); // Reset all formatting at start of line
-			
+
 			const isSelected = i === selectedIndex;
 			const isPreselected = i === preselectedIndex && preselectedIndex !== selectedIndex;
-			
+
 			// Apply background color for selected row (before any text)
 			if (isSelected) {
 				process.stdout.write(bgBlue);
 			}
-			
+
 			// Write prefix with colors (but don't reset if background is active)
 			if (isSelected) {
 				process.stdout.write(boldCode); // Bold for selected arrow
@@ -149,19 +147,19 @@ async function promptForModel(models: string[]): Promise<string> {
 			} else {
 				process.stdout.write("  ");
 			}
-			
+
 			// Write model number and name (keep background if selected)
 			process.stdout.write(`${i + 1}. ${models[i]}`);
-			
+
 			// Write suffix if preselected (keep background if selected)
 			if (isPreselected) {
 				process.stdout.write(cyanCode);
 				process.stdout.write(" (recommended)");
 			}
-			
+
 			// Reset all formatting at end of line
 			process.stdout.write(reset);
-			
+
 			// Always write newline to move to next line
 			process.stdout.write("\n");
 		}

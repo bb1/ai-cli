@@ -37,14 +37,14 @@ async function printVersion(): Promise<void> {
 	// In compiled binaries, this will be replaced at build time via --define
 	// In development, fallback to reading package.json
 	let version = process.env.AI_CLI_VERSION;
-	
+
 	if (!version) {
 		try {
 			// Development mode: read from package.json
 			const packagePath = new URL("../package.json", import.meta.url).pathname;
 			const packageFile = Bun.file(packagePath);
 			if (await packageFile.exists()) {
-				const packageJson = await packageFile.json() as { version?: string };
+				const packageJson = (await packageFile.json()) as { version?: string };
 				version = packageJson.version || "unknown";
 			}
 			version += " (development)";
@@ -53,7 +53,7 @@ async function printVersion(): Promise<void> {
 			version = "unknown";
 		}
 	}
-	
+
 	console.log(`ai v${version}`);
 }
 
