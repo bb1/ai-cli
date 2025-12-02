@@ -12,6 +12,19 @@ A Bun-native CLI tool that uses Ollama to generate shell commands from natural l
 
 ## Installation
 
+### Quick Install (Recommended)
+
+Install with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bb1/ai-cli/main/install.sh | bash
+```
+
+This script will:
+- Detect your OS and architecture (Linux/macOS, x64/arm64)
+- Download the latest release from GitHub
+- Install the binary to `/usr/local/bin` (or `~/.local/bin` if you don't have sudo)
+
 ### Build from Source
 
 ```bash
