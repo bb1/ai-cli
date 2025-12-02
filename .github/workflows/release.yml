@@ -92,31 +92,25 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Generate changelog
+        id: changelog
+        env:
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
+        run: |
+          CHANGELOG=$(bun run scripts/generate-changelog.ts)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Bump minor version
         id: bump-version
         run: |
-          # Read current version
-          VERSION=$(bun -e "const pkg = await Bun.file('package.json').json(); console.log(pkg.version);")
-          echo "Current version: $VERSION"
-          
-          # Bump minor version (e.g., 0.1.0 -> 0.2.0)
-          NEW_VERSION=$(bun -e "
-            const pkg = await Bun.file('package.json').json();
-            const [major, minor, patch] = pkg.version.split('.').map(Number);
-            const newVersion = \`\${major}.\${minor + 1}.0\`;
-            console.log(newVersion);
-          ")
-          echo "New version: $NEW_VERSION"
-          
-          # Update package.json
-          bun -e "
-            const pkg = await Bun.file('package.json').json();
-            pkg.version = '$NEW_VERSION';
-            await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-          
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          bun run scripts/bump-version.ts | while IFS='=' read -r key value; do
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          done
 
       - name: Commit version bump
         run: |
@@ -138,6 +132,6 @@ jobs:
         with:
           tag_name: ${{ steps.bump-version.outputs.tag }}
           name: Release ${{ steps.bump-version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
           files: artifacts/**/*.zip
-          generate_release_notes: true
 
