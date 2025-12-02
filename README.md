@@ -155,6 +155,10 @@ ai-cli/
 │   ├── prompt.ts     # Prompt templates
 │   ├── agent.ts      # Agent mode
 │   └── utils.ts      # Utilities
+├── scripts/          # Build and release scripts
+│   ├── build.ts      # Binary build script
+│   ├── bump-version.ts      # Version bumping with LLM
+│   └── generate-changelog.ts # Changelog generation with LLM
 ├── tests/            # Test files
 ├── package.json
 ├── tsconfig.json

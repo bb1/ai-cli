@@ -24,3 +24,4 @@ Thumbs.db
 
 # Debug
 *.log
+.env

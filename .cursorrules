@@ -39,6 +39,10 @@ src/
 ├── prompt.ts     # Prompt templates
 ├── agent.ts      # Agent mode
 └── utils.ts      # Shared utilities
+scripts/
+├── build.ts      # Binary build script
+├── bump-version.ts      # Version bumping with LLM
+└── generate-changelog.ts # Changelog generation with LLM
 ```
 
 ### Error Handling
@@ -102,4 +106,10 @@ max_commands = 10
 - Avoid `node:*` imports for compiled binary compatibility
 - Use environment variables (`$HOME`) instead of `node:os`
 - Use `Bun.file().exists()` instead of `node:fs.existsSync`
+
+## Commit Messages
+- Generate very short and concise commit messages
+- Use imperative mood (e.g., "add feature" not "added feature")
+- Keep messages under 50 characters when possible
+- Focus on what changed, not why (unless critical)
 
