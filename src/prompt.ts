@@ -3,24 +3,46 @@ import { getOSInfo } from "./utils.ts";
 /**
  * Build the system prompt for command generation
  */
-export function buildSystemPrompt(maxCommands = 7): string {
+export function buildSystemPrompt(
+	maxCommands = 7,
+	planningContext?: {
+		availableTools?: string[];
+		unavailableTools?: string[];
+		shellHistory?: string;
+		draft?: string;
+	},
+): string {
 	const { platform, shell } = getOSInfo();
 
-	return `You are a CLI command generator. Return ONLY CSV format.
-OS: ${platform}
-Shell: ${shell}
+	let contextSection = "";
+	if (planningContext) {
+		if (planningContext.draft) {
+			contextSection += `\nPlan: ${planningContext.draft}`;
+		}
+		if (planningContext.availableTools && planningContext.availableTools.length > 0) {
+			contextSection += `\nAvailable: ${planningContext.availableTools.join(", ")}`;
+		}
+		if (planningContext.unavailableTools && planningContext.unavailableTools.length > 0) {
+			contextSection += `\nUnavailable: ${planningContext.unavailableTools.join(", ")}`;
+		}
+		if (planningContext.shellHistory) {
+			contextSection += `\nHistory:\n${planningContext.shellHistory}`;
+		}
+	}
+
+	return `CLI command generator. OS: ${platform}, Shell: ${shell}${contextSection}
 Format: command;tools;comment
 
+CRITICAL: Output exactly ONE command that solves the task.
+Only output multiple commands (up to ${maxCommands}) when the task REQUIRES sequential steps.
+Do NOT output alternative solutions or variations.
+
 Rules:
-- command = the shell command to execute
-- tools = space-separated binary names used in the command (e.g., "find grep" or "curl jq")
+- command = shell command to execute
+- tools = space-separated binaries (e.g., "find wc")
 - comment = brief explanation
-- If the task is impossible or unclear, leave command and tools empty, fill only comment
-- For complex tasks requiring multiple steps, output up to ${maxCommands} lines (one command per line)
-- Be concise, use standard ${platform} tools
-- Do not include any text before or after the CSV lines
-- Do not include CSV headers
-- Do not wrap in code blocks`;
+- If impossible, leave command/tools empty, explain in comment
+- No text before/after CSV, no headers, no code blocks`;
 }
 
 /**
@@ -74,6 +96,67 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers
 - Do not wrap in code blocks`;
+}
+
+/**
+ * Build the planning system prompt for the LLM
+ */
+export function buildPlanningSystemPrompt(
+	iteration: number,
+	maxIterations: number,
+	context?: {
+		availableTools?: string[];
+		unavailableTools?: string[];
+		shellHistory?: string;
+		draft?: string;
+	},
+): string {
+	const { platform, shell } = getOSInfo();
+
+	let contextSection = "";
+	if (context) {
+		if (context.availableTools && context.availableTools.length > 0) {
+			contextSection += `\nAvailable: ${context.availableTools.join(", ")}`;
+		}
+		if (context.unavailableTools && context.unavailableTools.length > 0) {
+			contextSection += `\nUnavailable: ${context.unavailableTools.join(", ")}`;
+		}
+		if (context.shellHistory) {
+			contextSection += `\nHistory:\n${context.shellHistory}`;
+		}
+		if (context.draft) {
+			contextSection += `\nDraft plan: ${context.draft}`;
+		}
+	}
+
+	// If we have context, encourage READY response
+	const hasContext = context?.availableTools?.length || context?.shellHistory;
+
+	if (hasContext) {
+		return `Planning ${iteration}/${maxIterations}. OS: ${platform}, Shell: ${shell}${contextSection}
+
+You now have the information you requested. Output ONLY:
+READY: your final plan based on the info above`;
+	}
+
+	return `Planning ${iteration}/${maxIterations}. OS: ${platform}, Shell: ${shell}
+
+You are planning a CLI command. Output ONE of these response types:
+
+OPTION A - Need to check uncommon tools (jq, yq, ripgrep, etc):
+CHECK_TOOLS: tool1 tool2
+
+OPTION B - Need user's command history for context:
+CHECK_HISTORY: search_term
+
+OPTION C - Ready to generate command (use for common tools like find, grep, awk, sed, sort, wc):
+READY: your plan
+
+IMPORTANT: Choose ONLY ONE option. If you choose A or B, do NOT include READY - you will get another turn after receiving the results.
+
+Example for "count files": READY: Use find with -type f piped to wc -l
+Example for "parse yaml": CHECK_TOOLS: yq
+Example for "repeat last docker command": CHECK_HISTORY: docker`;
 }
 
 /**

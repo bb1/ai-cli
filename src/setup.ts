@@ -285,8 +285,8 @@ export async function runSetup(): Promise<Config> {
 
 	const config: Config = {
 		ollama: { url: ollamaUrl, model: selectedModel },
-		default: { max_commands: 7 },
-		agent: { max_commands: 10 },
+		default: { max_commands: 7, max_planning_iterations: 5 },
+		agent: { max_commands: 10, max_planning_iterations: 5 },
 	};
 
 	await saveConfig(config, true);

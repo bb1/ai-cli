@@ -177,14 +177,120 @@ export function isAgentDone(response: string): { done: boolean; summary?: string
 }
 
 /**
+ * Extract the binary name from a command string
+ * Returns the first word that looks like a binary (not a shell operator or keyword)
+ */
+function extractBinaryFromCommand(command: string): string | null {
+	if (!command.trim()) {
+		return null;
+	}
+
+	// Remove leading shell operators and redirections
+	const cleaned = command
+		.replace(/^[;&|]+\s*/, "") // Remove leading ; & |
+		.replace(/^\s*\(+\s*/, "") // Remove leading (
+		.trim();
+
+	if (!cleaned) {
+		return null;
+	}
+
+	// Split by spaces, but handle quoted arguments
+	const parts = cleaned.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g);
+	if (!parts || parts.length === 0) {
+		return null;
+	}
+
+	// Get the first part and remove quotes
+	let firstPart = parts[0].replace(/^["']|["']$/g, "");
+
+	// Remove variable assignments (e.g., "VAR=value command")
+	if (firstPart.includes("=") && !firstPart.startsWith("$")) {
+		// If it's an assignment, get the command after =
+		const afterEquals = firstPart.split("=").slice(-1)[0];
+		if (afterEquals) {
+			firstPart = afterEquals;
+		}
+	}
+
+	// Skip if it's a shell operator
+	const operators = ["|", "&", ";", "&&", "||", ">", ">>", "<", "<<", "(", ")", "{", "}"];
+	if (operators.includes(firstPart)) {
+		return null;
+	}
+
+	// Skip if it starts with special characters (except for paths)
+	if (firstPart.startsWith("$") || firstPart.startsWith("@")) {
+		return null;
+	}
+
+	return firstPart;
+}
+
+/**
  * Extract all unique tools from parsed commands
+ * Uses the actual command string to extract binaries, not the tools field
  */
 export function extractAllTools(commands: ParsedCommand[]): string[] {
 	const toolSet = new Set<string>();
 
 	for (const cmd of commands) {
+		if (cmd.command) {
+			const binary = extractBinaryFromCommand(cmd.command);
+			if (binary) {
+				toolSet.add(binary);
+			}
+		}
+		// Also check the tools field, but filter out common non-binary words
 		for (const tool of cmd.tools) {
-			toolSet.add(tool);
+			// Filter out common words that are clearly not binaries
+			const commonWords = [
+				"in",
+				"the",
+				"a",
+				"an",
+				"and",
+				"or",
+				"for",
+				"to",
+				"from",
+				"with",
+				"by",
+				"at",
+				"on",
+				"is",
+				"are",
+				"was",
+				"were",
+				"be",
+				"been",
+				"have",
+				"has",
+				"had",
+				"do",
+				"does",
+				"did",
+				"will",
+				"would",
+				"should",
+				"could",
+				"may",
+				"might",
+				"must",
+				"can",
+				"files",
+				"file",
+				"directory",
+				"dir",
+				"folder",
+				"path",
+				"paths",
+			];
+			const lowerTool = tool.toLowerCase();
+			if (!commonWords.includes(lowerTool) && tool.length > 0 && /^[a-zA-Z0-9_-]+$/.test(tool)) {
+				// Only add if it looks like a valid binary name (alphanumeric, underscore, hyphen)
+				toolSet.add(tool);
+			}
 		}
 	}
 

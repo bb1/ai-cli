@@ -5,9 +5,10 @@ import { type Config, loadConfig } from "./config.ts";
 import { confirmCommand, executeCommands, getAdjustedQuery, validateTools } from "./executor.ts";
 import { generate, retryWithMissingTool } from "./ollama.ts";
 import { extractAllTools, parseResponse } from "./parser.ts";
-import { formatUserQuery } from "./prompt.ts";
+import { runPlanningPhase } from "./planning.ts";
+import { buildSystemPrompt, formatUserQuery } from "./prompt.ts";
 import { runSetup } from "./setup.ts";
-import { bold, cyan, dim, logError, logInfo, logSuccess, yellow } from "./utils.ts";
+import { bold, cyan, dim, isDevMode, logError, logInfo, logSuccess, yellow } from "./utils.ts";
 
 function printHelp(): void {
 	console.log(`
@@ -58,6 +59,11 @@ async function printVersion(): Promise<void> {
 }
 
 async function runSingleQuery(config: Config, query: string): Promise<void> {
+	const devMode = isDevMode();
+
+	// Run planning phase
+	const planningContext = await runPlanningPhase(config, query, config.default.max_planning_iterations, devMode);
+
 	let currentQuery = query;
 	let retryCount = 0;
 	const maxRetries = 2;
@@ -67,7 +73,13 @@ async function runSingleQuery(config: Config, query: string): Promise<void> {
 
 		let response: string;
 		try {
-			response = await generate(config, formatUserQuery(currentQuery));
+			const systemPrompt = buildSystemPrompt(config.default.max_commands, {
+				availableTools: planningContext.availableTools,
+				unavailableTools: planningContext.unavailableTools,
+				shellHistory: planningContext.shellHistory,
+				draft: planningContext.draft,
+			});
+			response = await generate(config, formatUserQuery(currentQuery), systemPrompt);
 		} catch (error) {
 			logError(`Failed to get response: ${error}`);
 			return;

@@ -104,3 +104,19 @@ export function logSuccess(message: string): void {
 export function logWarning(message: string): void {
 	console.log(yellow(`Warning: ${message}`));
 }
+
+/**
+ * Check if running in development mode
+ * Detects if the script is being run via "bun run dev" or directly as source
+ */
+export function isDevMode(): boolean {
+	// Check if running via bun run dev
+	const execPath = process.argv[1] || "";
+	const isSourceFile = execPath.endsWith("index.ts") || execPath.includes("src/index.ts");
+
+	// Also check for explicit dev flag or NODE_ENV
+	const hasDevFlag = process.argv.includes("--dev");
+	const isNodeDev = process.env.NODE_ENV === "development";
+
+	return isSourceFile || hasDevFlag || isNodeDev;
+}

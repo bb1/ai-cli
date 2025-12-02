@@ -8,12 +8,11 @@ export interface OllamaConfig {
 
 export interface DefaultConfig {
 	max_commands: number;
+	max_planning_iterations: number;
 }
 
 /** Inherits from default if not specified */
-export interface AgentConfig extends DefaultConfig {
-	max_commands: number;
-}
+export interface AgentConfig extends DefaultConfig {}
 
 export interface Config {
 	ollama: OllamaConfig;
@@ -24,6 +23,7 @@ export interface Config {
 // Default values
 const DEFAULTS: DefaultConfig = {
 	max_commands: 7,
+	max_planning_iterations: 5,
 };
 
 const CONFIG_FILENAME = ".ai-config.toml";
@@ -150,6 +150,12 @@ export function validateConfig(config: unknown): config is Config {
 		if (defaultSection.max_commands !== undefined && typeof defaultSection.max_commands !== "number") {
 			return false;
 		}
+		if (
+			defaultSection.max_planning_iterations !== undefined &&
+			typeof defaultSection.max_planning_iterations !== "number"
+		) {
+			return false;
+		}
 	}
 
 	if (c.agent !== undefined) {
@@ -158,6 +164,9 @@ export function validateConfig(config: unknown): config is Config {
 		}
 		const agent = c.agent as Record<string, unknown>;
 		if (agent.max_commands !== undefined && typeof agent.max_commands !== "number") {
+			return false;
+		}
+		if (agent.max_planning_iterations !== undefined && typeof agent.max_planning_iterations !== "number") {
 			return false;
 		}
 	}
