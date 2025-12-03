@@ -7,24 +7,7 @@ export interface GenerateResponse {
 	context?: number[];
 }
 
-export async function generate(config: Config, prompt: string, systemPrompt?: string): Promise<string> {
-	const { platform, shell } = getOSInfo();
-
-	const defaultSystemPrompt = `You are a CLI command generator. Return ONLY CSV format.
-OS: ${platform}
-Shell: ${shell}
-Format: command;tools;comment
-
-Rules:
-- command = the shell command to execute
-- tools = space-separated binary names used in the command
-- comment = brief explanation or error message
-- If the task is impossible or you don't know, leave command and tools empty, fill only comment
-- For complex tasks requiring multiple commands, output up to 7 lines (one command per line)
-- Be concise, use standard ${platform} tools
-- Do not include any text before or after the CSV lines
-- Do not include CSV headers`;
-
+async function callOllamaAPI(config: Config, prompt: string, systemPrompt: string): Promise<string> {
 	try {
 		const response = await fetch(`${config.ollama.url}/api/generate`, {
 			method: "POST",
@@ -34,7 +17,7 @@ Rules:
 			body: JSON.stringify({
 				model: config.ollama.model,
 				prompt: prompt,
-				system: systemPrompt || defaultSystemPrompt,
+				system: systemPrompt,
 				stream: false,
 			}),
 		});
@@ -64,6 +47,27 @@ Rules:
 		// Re-throw other errors as-is
 		throw error;
 	}
+}
+
+export async function generate(config: Config, prompt: string, systemPrompt?: string): Promise<string> {
+	const { platform, shell } = getOSInfo();
+
+	const defaultSystemPrompt = `You are a CLI command generator. Return ONLY CSV format.
+OS: ${platform}
+Shell: ${shell}
+Format: command;tools;comment
+
+Rules:
+- command = the shell command to execute
+- tools = space-separated binary names used in the command
+- comment = brief explanation or error message
+- If the task is impossible or you don't know, leave command and tools empty, fill only comment
+- For complex tasks requiring multiple commands, output up to 7 lines (one command per line)
+- Be concise, use standard ${platform} tools
+- Do not include any text before or after the CSV lines
+- Do not include CSV headers`;
+
+	return callOllamaAPI(config, prompt, systemPrompt || defaultSystemPrompt);
 }
 
 export async function generateWithContext(
@@ -94,45 +98,7 @@ Rules:
 Previous command output:
 ${previousOutput}`;
 
-	try {
-		const response = await fetch(`${config.ollama.url}/api/generate`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				model: config.ollama.model,
-				prompt: prompt,
-				system: systemPrompt,
-				stream: false,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Ollama API error: ${response.statusText}`);
-		}
-
-		const data = (await response.json()) as GenerateResponse;
-		return data.response.trim();
-	} catch (error) {
-		// Handle network/connection errors
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		if (
-			error instanceof TypeError ||
-			errorMessage.includes("connect") ||
-			errorMessage.includes("Unable to connect") ||
-			errorMessage.includes("fetch failed") ||
-			errorMessage.includes("ECONNREFUSED")
-		) {
-			throw new Error(
-				`Cannot connect to Ollama at ${config.ollama.url}.\n` +
-					`Is Ollama running? Try: ollama serve\n` +
-					`Or check your config: ai setup`,
-			);
-		}
-		// Re-throw other errors as-is
-		throw error;
-	}
+	return callOllamaAPI(config, prompt, systemPrompt);
 }
 
 export async function retryWithMissingTool(
@@ -158,43 +124,5 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers`;
 
-	try {
-		const response = await fetch(`${config.ollama.url}/api/generate`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				model: config.ollama.model,
-				prompt: originalPrompt,
-				system: systemPrompt,
-				stream: false,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Ollama API error: ${response.statusText}`);
-		}
-
-		const data = (await response.json()) as GenerateResponse;
-		return data.response.trim();
-	} catch (error) {
-		// Handle network/connection errors
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		if (
-			error instanceof TypeError ||
-			errorMessage.includes("connect") ||
-			errorMessage.includes("Unable to connect") ||
-			errorMessage.includes("fetch failed") ||
-			errorMessage.includes("ECONNREFUSED")
-		) {
-			throw new Error(
-				`Cannot connect to Ollama at ${config.ollama.url}.\n` +
-					`Is Ollama running? Try: ollama serve\n` +
-					`Or check your config: ai setup`,
-			);
-		}
-		// Re-throw other errors as-is
-		throw error;
-	}
+	return callOllamaAPI(config, originalPrompt, systemPrompt);
 }
