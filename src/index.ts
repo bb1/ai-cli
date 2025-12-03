@@ -8,6 +8,7 @@ import { extractAllTools, parseResponse } from "./parser.ts";
 import { runPlanningPhase } from "./planning.ts";
 import { buildSystemPrompt, formatUserQuery } from "./prompt.ts";
 import { runSetup } from "./setup.ts";
+import { runUpdate } from "./update.ts";
 import { bold, cyan, dim, isDevMode, logError, logInfo, logSuccess, yellow } from "./utils.ts";
 
 function printHelp(): void {
@@ -18,6 +19,7 @@ ${bold("USAGE:")}
   ai <query>                  Generate and execute a shell command
   ai agent <query>            Agent mode: execute commands iteratively
   ai setup                    Run the configuration wizard
+  ai update                   Update to the latest version
   ai --help                   Show this help message
   ai --version                Show version
 
@@ -26,11 +28,6 @@ ${bold("EXAMPLES:")}
   ai list all docker containers
   ai agent find and delete all files bigger than 1GB
   ai compress all png files in current dir
-
-${bold("OPTIONS:")}
-  Y        Execute the command
-  n        Cancel
-  adjust   Modify the query and retry
 `);
 }
 
@@ -171,6 +168,17 @@ async function main(): Promise<void> {
 
 	if (args.includes("--version") || args.includes("-v")) {
 		await printVersion();
+		return;
+	}
+
+	// Handle update command (only if no additional arguments)
+	if (args[0] === "update" && args.length === 1) {
+		if (isDevMode()) {
+			logError("Update command is not available in development mode.");
+			logError("Use the install script or build a release binary to update.");
+			process.exit(1);
+		}
+		await runUpdate();
 		return;
 	}
 
