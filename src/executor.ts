@@ -1,6 +1,6 @@
 import type { ParsedCommand } from "./parser.ts";
 import { checkCommandSafety, formatSafetyWarnings } from "./safety.ts";
-import { bold, cyan, dim, green, logError, readLine, yellow } from "./utils.ts";
+import { bold, cyan, dim, green, getHomeDir, logError, readLine, yellow } from "./utils.ts";
 
 export interface ExecutionResult {
 	success: boolean;
@@ -125,11 +125,29 @@ export async function confirmCommand(commands: ParsedCommand[]): Promise<"yes" |
 }
 
 /**
+ * Get the user's shell for command execution
+ */
+function getUserShell(): string {
+	// Use SHELL environment variable, default to bash
+	const shell = process.env.SHELL || "/bin/bash";
+	
+	// Handle common shells
+	if (shell.includes("zsh")) return "zsh";
+	if (shell.includes("fish")) return "fish";
+	if (shell.includes("bash")) return "bash";
+	if (shell.includes("sh")) return "sh";
+	
+	// Default to bash
+	return "bash";
+}
+
+/**
  * Execute a single command and return the result
  */
 export async function executeCommand(command: string): Promise<ExecutionResult> {
 	try {
-		const proc = Bun.spawn(["sh", "-c", command], {
+		const userShell = getUserShell();
+		const proc = Bun.spawn([userShell, "-c", command], {
 			stdout: "pipe",
 			stderr: "pipe",
 		});
@@ -159,7 +177,8 @@ export async function executeCommand(command: string): Promise<ExecutionResult> 
  */
 export async function executeCommandInteractive(command: string): Promise<number> {
 	try {
-		const proc = Bun.spawn(["sh", "-c", command], {
+		const userShell = getUserShell();
+		const proc = Bun.spawn([userShell, "-c", command], {
 			stdout: "inherit",
 			stderr: "inherit",
 			stdin: "inherit",
