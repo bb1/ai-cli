@@ -34,8 +34,13 @@ export function buildSystemPrompt(
 Format: command;tools;comment
 
 CRITICAL: Output exactly ONE command that solves the task.
-Only output multiple commands (up to ${maxCommands}) when the task REQUIRES sequential steps.
-Do NOT output alternative solutions or variations.
+Only output multiple commands (up to ${maxCommands}) when the task REQUIRES sequential steps that cannot be combined into a single command.
+Multiple commands should ONLY be used when:
+- One command's output is needed as input to another command
+- Commands must be executed in a specific order with dependencies
+- The task requires interactive steps that cannot be piped
+
+PREFER single commands using pipes (|), &&, || operators, or command substitution.
 
 Rules:
 - command = shell command to execute
@@ -68,6 +73,8 @@ Rules:
 - Do not include CSV headers
 - Do not wrap in code blocks
 
+IMPORTANT: Only output ONE command per iteration. Use pipes (|), &&, || operators, or command substitution to combine steps into a single command whenever possible. Multiple commands should only be used when absolutely necessary for sequential dependencies.
+
 Previous command output:
 \`\`\`
 ${previousOutput.slice(-2000)}
@@ -95,7 +102,9 @@ Rules:
 - If impossible without the missing tools, leave command and tools empty, explain in comment
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers
-- Do not wrap in code blocks`;
+- Do not wrap in code blocks
+
+CRITICAL: Output exactly ONE command. Only use multiple commands when absolutely necessary for sequential dependencies that cannot be combined.`;
 }
 
 /**
