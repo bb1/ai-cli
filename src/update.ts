@@ -12,6 +12,18 @@ interface SystemInfo {
 }
 
 /**
+ * Check if a path is writable
+ */
+async function isWritable(path: string): Promise<boolean> {
+	try {
+		const result = await Bun.spawn(["test", "-w", path]).exited;
+		return result === 0;
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Detect OS and architecture
  */
 function detectSystem(): SystemInfo {
@@ -89,17 +101,20 @@ async function getInstalledVersion(binaryPath: string): Promise<string | null> {
 			stderr: "pipe",
 		});
 
-		const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+		const [stdout, _stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 
 		const exitCode = await proc.exited;
 
 		if (exitCode !== 0) {
+			if (_stderr.trim()) {
+				logError(`Failed to get version: ${_stderr.trim()}`);
+			}
 			return null;
 		}
 
 		// Extract version number (handles formats like "ai v0.4.0" or "v0.4.0" or "0.4.0")
 		const match = stdout.match(/[vV]?([0-9]+\.[0-9]+\.[0-9]+)/);
-		if (match && match[1]) {
+		if (match?.[1]) {
 			return match[1];
 		}
 	} catch {
@@ -190,24 +205,26 @@ async function installBinary(system: string, version: string, existingPath: stri
 
 			// Check if we need sudo for the existing location
 			const dir = existingPath.substring(0, existingPath.lastIndexOf("/"));
-			const dirFile = Bun.file(dir);
-			// Check if directory is writable (simplified check)
-			if (dir === INSTALL_DIR) {
+			if (!(await isWritable(dir))) {
 				needsSudo = true;
 			}
 		} else {
 			// New installation: try system-wide first if we can write directly or have sudo
-			const installDirFile = Bun.file(INSTALL_DIR);
-			// For simplicity, assume we need sudo for system-wide
-			if (INSTALL_DIR === "/usr/local/bin") {
-				needsSudo = true;
+			if (await isWritable(INSTALL_DIR)) {
 				installPath = `${INSTALL_DIR}/${BINARY_NAME}`;
 			} else {
-				installPath = `${USER_INSTALL_DIR}/${BINARY_NAME}`;
-				await Bun.spawn(["mkdir", "-p", USER_INSTALL_DIR], {
-					stdout: "pipe",
-					stderr: "pipe",
-				}).exited;
+				// Try to see if we can use sudo for system-wide, otherwise use user-local
+				// For simplicity, we'll try system-wide with sudo if it's the standard /usr/local/bin
+				if (INSTALL_DIR === "/usr/local/bin") {
+					needsSudo = true;
+					installPath = `${INSTALL_DIR}/${BINARY_NAME}`;
+				} else {
+					installPath = `${USER_INSTALL_DIR}/${BINARY_NAME}`;
+					await Bun.spawn(["mkdir", "-p", USER_INSTALL_DIR], {
+						stdout: "pipe",
+						stderr: "pipe",
+					}).exited;
+				}
 			}
 		}
 
