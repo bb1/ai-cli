@@ -10,6 +10,11 @@ export interface GeminiConfig {
 	cookies: Record<string, string>;
 }
 
+export interface LMStudioConfig {
+	url: string;
+	model: string;
+}
+
 export interface DefaultConfig {
 	max_commands: number;
 	max_planning_iterations: number;
@@ -19,9 +24,10 @@ export interface DefaultConfig {
 export interface AgentConfig extends DefaultConfig { }
 
 export interface Config {
-	active_provider: "ollama" | "gemini";
-	ollama: OllamaConfig;
+	active_provider: "ollama" | "gemini" | "lm_studio";
+	ollama?: OllamaConfig;
 	gemini?: GeminiConfig;
+	lm_studio?: LMStudioConfig;
 	default: DefaultConfig;
 	agent: AgentConfig;
 }
@@ -60,7 +66,7 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 function mergeWithDefaults(parsed: Record<string, unknown>): Config {
-	const ollamaSection = parsed.ollama as OllamaConfig;
+	const ollamaSection = parsed.ollama as OllamaConfig | undefined;
 	const defaultSection = parsed.default as Partial<DefaultConfig> | undefined;
 	const agentSection = parsed.agent as Partial<AgentConfig> | undefined;
 
@@ -125,6 +131,7 @@ export async function saveConfig(config: Config, global = true): Promise<void> {
 		active_provider: config.active_provider,
 		ollama: config.ollama,
 		gemini: config.gemini,
+		lm_studio: config.lm_studio,
 		default: config.default,
 		agent: config.agent,
 	});
@@ -138,22 +145,49 @@ function validateConfigRequired(config: unknown): boolean {
 
 	const c = config as Record<string, unknown>;
 
-	// Validate [ollama] section is present with required fields
-	if (typeof c.ollama !== "object" || c.ollama === null) {
-		return false;
-	}
-	const ollama = c.ollama as Record<string, unknown>;
-	if (typeof ollama.url !== "string" || typeof ollama.model !== "string") {
-		return false;
-	}
-
 	// Active provider must be valid string if present
 	if (
 		c.active_provider !== undefined &&
 		c.active_provider !== "ollama" &&
-		c.active_provider !== "gemini"
+		c.active_provider !== "gemini" &&
+		c.active_provider !== "lm_studio"
 	) {
 		return false;
+	}
+
+	const activeProvider = (c.active_provider as string) || DEFAULT_PROVIDER;
+
+	// Validate [ollama] section if it is the active provider
+	if (activeProvider === "ollama") {
+		if (typeof c.ollama !== "object" || c.ollama === null) {
+			return false;
+		}
+		const ollama = c.ollama as Record<string, unknown>;
+		if (typeof ollama.url !== "string" || typeof ollama.model !== "string") {
+			return false;
+		}
+	}
+
+	// Validate [gemini] section if it is active
+	if (activeProvider === "gemini") {
+		if (typeof c.gemini !== "object" || c.gemini === null) {
+			return false;
+		}
+		const gemini = c.gemini as Record<string, unknown>;
+		if (typeof gemini.cookies !== "object" || gemini.cookies === null) {
+			return false;
+		}
+	}
+
+	// Validate [lm_studio] section if it is active
+	if (activeProvider === "lm_studio") {
+		if (typeof c.lm_studio !== "object" || c.lm_studio === null) {
+			return false;
+		}
+		const lmStudio = c.lm_studio as Record<string, unknown>;
+		if (typeof lmStudio.url !== "string" || typeof lmStudio.model !== "string") {
+			return false;
+		}
 	}
 
 	return true;

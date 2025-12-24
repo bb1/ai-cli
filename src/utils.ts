@@ -63,7 +63,6 @@ export function getHomeDir(): string {
 	return home;
 }
 
-// Read line from stdin
 // Read line from stdin using native Bun prompt
 export async function readLine(text: string): Promise<string> {
 	const result = prompt(text);

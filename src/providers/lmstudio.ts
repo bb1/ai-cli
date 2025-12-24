@@ -1,44 +1,47 @@
 import type { Config } from "../config.ts";
 import { BaseProvider } from "./base.ts";
 
-interface GenerateResponse {
-    response: string;
-    done: boolean;
-    context?: number[];
+interface ChatCompletionResponse {
+    choices: {
+        message: {
+            content: string;
+        };
+    }[];
 }
 
-export class OllamaProvider extends BaseProvider {
+export class LMStudioProvider extends BaseProvider {
     constructor(private config: Config) {
         super();
     }
 
     protected async callAPI(prompt: string, systemPrompt: string): Promise<string> {
-        if (!this.config.ollama) {
-            throw new Error("Ollama configuration missing");
+        if (!this.config.lm_studio) {
+            throw new Error("LM Studio configuration missing");
         }
 
         try {
-            const response = await fetch(`${this.config.ollama.url}/api/generate`, {
+            const response = await fetch(`${this.config.lm_studio.url}/v1/chat/completions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: this.config.ollama.model,
-                    prompt: prompt,
-                    system: systemPrompt,
-                    stream: false,
+                    model: this.config.lm_studio.model,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: prompt },
+                    ],
+                    temperature: 0.7,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error(`Ollama API error: ${response.statusText}`);
+                throw new Error(`LM Studio API error: ${response.statusText}`);
             }
 
-            const data = (await response.json()) as GenerateResponse;
-            return data.response.trim();
+            const data = (await response.json()) as ChatCompletionResponse;
+            return data.choices[0].message.content.trim();
         } catch (error) {
-            // Handle network/connection errors
             const errorMessage = error instanceof Error ? error.message : String(error);
             if (
                 error instanceof TypeError ||
@@ -48,12 +51,11 @@ export class OllamaProvider extends BaseProvider {
                 errorMessage.includes("ECONNREFUSED")
             ) {
                 throw new Error(
-                    `Cannot connect to Ollama at ${this.config.ollama!.url}.\n` +
-                    `Is Ollama running? Try: ollama serve\n` +
+                    `Cannot connect to LM Studio at ${this.config.lm_studio.url}.\n` +
+                    `Is LM Studio running? Make sure the server is started.\n` +
                     `Or check your config: ai setup`,
                 );
             }
-            // Re-throw other errors as-is
             throw error;
         }
     }

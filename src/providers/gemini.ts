@@ -1,13 +1,14 @@
 import { type Config, saveConfig } from "../config.ts";
-import { getOSInfo } from "../utils.ts";
 import { parseGeminiResponse } from "./gemini_parser.ts";
-import type { AIProvider } from "./interface.ts";
+import { BaseProvider } from "./base.ts";
 
-export class GeminiProvider implements AIProvider {
+export class GeminiProvider extends BaseProvider {
     private snlm0e?: string;
     private bl?: string;
 
-    constructor(private config: Config) { }
+    constructor(private config: Config) {
+        super();
+    }
 
     private getCookieHeader(): string {
         if (!this.config.gemini?.cookies) {
@@ -90,7 +91,7 @@ export class GeminiProvider implements AIProvider {
         return this.snlm0e;
     }
 
-    private async callGeminiAPI(prompt: string, systemPrompt: string): Promise<string> {
+    protected async callAPI(prompt: string, systemPrompt: string): Promise<string> {
         if (!this.config.gemini?.cookies) {
             throw new Error("Gemini cookies are missing. Please run 'ai setup' to configure Gemini.");
         }
@@ -115,7 +116,7 @@ export class GeminiProvider implements AIProvider {
                 // This body is highly specific and likely needs a proper encoder.
                 // For the first pass, we will try to just signal intent or fail gracefully if we can't implement the full protocol.
                 // fix conversation-id to be strictly valid json struct for new chat
-                body: `f.req=${encodeURIComponent(JSON.stringify([null, `[[${JSON.stringify(prompt + "\n\nSystem: " + systemPrompt)}],null,["",null,null,null,null,[]]]`]))}&at=${snlm0e}`,
+                body: `f.req=${encodeURIComponent(JSON.stringify([null, `[[${JSON.stringify("SYSTEM:\n" + systemPrompt + "\n\nUSER:\n" + prompt)},null,["",null,null,null,null,[]]]`]))}&at=${snlm0e}`,
             });
 
             await this.updateCookies(response.headers);
@@ -125,63 +126,11 @@ export class GeminiProvider implements AIProvider {
             }
 
             const text = await response.text();
-            // Parse the complex response format (usually separated by newlines and JSON arrays)
-            // This is a placeholder parser.
-            return this.parseGeminiResponse(text);
+            return parseGeminiResponse(text);
 
         } catch (error) {
             throw new Error(`Failed to call Gemini API: ${error} `);
         }
     }
-
-    private parseGeminiResponse(text: string): string {
-        return parseGeminiResponse(text);
-    }
-
-    async generate(prompt: string, systemPrompt?: string): Promise<string> {
-        const { platform, shell } = getOSInfo();
-        const defaultSystemPrompt = `You are a CLI command generator.Return ONLY CSV format.
-    OS: ${platform}
-Shell: ${shell}
-Format: command; tools; comment
-
-Rules:
-- command = the shell command to execute
-- tools = space - separated binary names used in the command
-- comment = brief explanation or error message
-- If the task is impossible or you don't know, leave command and tools empty, fill only comment
-- For complex tasks requiring multiple commands, output up to 7 lines(one command per line)
-- Be concise, use standard ${platform} tools
-- Do not include any text before or after the CSV lines
-- Do not include CSV headers`;
-
-        return this.callGeminiAPI(prompt, systemPrompt || defaultSystemPrompt);
-    }
-
-    async generateWithContext(
-        prompt: string,
-        previousOutput: string,
-        iteration: number,
-    ): Promise<string> {
-        const { platform, shell } = getOSInfo();
-        // same system prompt logic as Ollama
-        const systemPrompt = `You are a CLI command generator operating in agent mode.Return ONLY CSV format.
-    OS: ${platform}
-Shell: ${shell}
-Format: command; tools; comment
-Iteration: ${iteration}/10
-Previous command output:
-${previousOutput} `;
-        return this.callGeminiAPI(prompt, systemPrompt);
-    }
-
-    async retryWithMissingTool(
-        originalPrompt: string,
-        missingTools: string[],
-    ): Promise<string> {
-        // same system prompt logic as Ollama
-        const { platform, shell } = getOSInfo();
-        const systemPrompt = `Missing tools: ${missingTools.join(", ")} `;
-        return this.callGeminiAPI(originalPrompt, systemPrompt);
-    }
 }
+

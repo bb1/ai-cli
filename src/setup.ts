@@ -1,8 +1,9 @@
-import { type Config, type GeminiConfig, type OllamaConfig, saveConfig } from "./config.ts";
+import { type Config, type GeminiConfig, type LMStudioConfig, type OllamaConfig, saveConfig } from "./config.ts";
 // biome-ignore lint/correctness/noUnusedImports: cyan is used in multiple places (lines 83, 169, 279, 293, 294)
 import { bold, cyan, green, logError, logInfo, logSuccess, readLine, yellow } from "./utils.ts";
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
+const DEFAULT_LMSTUDIO_URL = "http://localhost:1234";
 
 // Model priority order for automatic selection suggestions
 const MODEL_PRIORITY = [
@@ -35,6 +36,15 @@ interface OllamaTagsResponse {
 	models: OllamaModel[];
 }
 
+interface LMStudioModelObject {
+	id: string;
+	object: string;
+}
+
+interface LMStudioModelsResponse {
+	data: LMStudioModelObject[];
+}
+
 async function checkOllamaConnection(url: string): Promise<boolean> {
 	try {
 		const response = await fetch(`${url}/api/tags`, {
@@ -54,6 +64,30 @@ async function fetchModels(url: string): Promise<string[]> {
 		}
 		const data = (await response.json()) as OllamaTagsResponse;
 		return data.models.map((m) => m.name);
+	} catch (error) {
+		throw new Error(`Failed to fetch models: ${error}`);
+	}
+}
+
+async function checkLMStudioConnection(url: string): Promise<boolean> {
+	try {
+		const response = await fetch(`${url}/v1/models`, {
+			signal: AbortSignal.timeout(5000),
+		});
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+async function fetchLMStudioModels(url: string): Promise<string[]> {
+	try {
+		const response = await fetch(`${url}/v1/models`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch models: ${response.statusText}`);
+		}
+		const data = (await response.json()) as LMStudioModelsResponse;
+		return data.data.map((m) => m.id);
 	} catch (error) {
 		throw new Error(`Failed to fetch models: ${error}`);
 	}
@@ -245,28 +279,33 @@ async function promptForModel(models: string[]): Promise<string> {
 	}
 }
 
-async function promptForProvider(): Promise<"ollama" | "gemini"> {
+async function promptForLMStudioUrl(): Promise<string> {
+	console.log(yellow("\nLM Studio not detected on default port (1234)."));
+	const customUrl = await readLine(cyan("Enter LM Studio URL (or press Enter to retry default): "));
+
+	if (!customUrl.trim()) {
+		return DEFAULT_LMSTUDIO_URL;
+	}
+
+	// Normalize URL
+	let url = customUrl.trim();
+	if (!url.startsWith("http://") && !url.startsWith("https://")) {
+		url = `http://${url}`;
+	}
+	// Remove trailing slash
+	url = url.replace(/\/$/, "");
+
+	return url;
+}
+
+async function promptForProvider(): Promise<"ollama" | "gemini" | "lm_studio"> {
 	console.log(bold("\n🤖 Select AI Provider:\n"));
-	const options = ["Ollama (Local)", "Gemini (Web)"];
+	const options = ["Ollama (Local)", "LM Studio (Local)", "Gemini (Web)"];
 
-	// Reuse a simplified version of promptForModel logic or just use readLine for 2 options? 
-	// The promptForModel logic is quite ui-heavy. Let's make a simple selection list reusable or just duplicat parts of it?
-	// promptForModel is deeply coupled with the models array.
-	// Let's implement a simple selection here using the standard input flow 
-	// BUT since we want to be "premium", let's use the arrow key selection if possible.
-	// Actually, promptForModel is generic enough if we pass ["Ollama", "Gemini"].
-
-	// We can extract a generic promptForSelection if we wanted, but to minimize diffs, let's just use a simple numbered input for now 
-	// OR just copy/paste the UI logic if we really want it fancy.
-	// Given the instructions "Design Aesthetics... WOW the user", I should probably use the fancy selector or refactor it.
-	// But refactoring promptForModel is risky with replace_file_content.
-	// I will use a simple numbered list for this step to reduce complexity, as "WOW" usually applies to the WEB APP not the CLI setup.
-	// Wait, "AI CLI Setup" - users will see this. 
-	// Let's us use the promptForModel logic but adapted.
-
-	// Actually, I can just use promptForModel(options) and map back.
 	const selection = await promptForModel(options);
-	return selection.startsWith("Ollama") ? "ollama" : "gemini";
+	if (selection.startsWith("Ollama")) return "ollama";
+	if (selection.startsWith("LM Studio")) return "lm_studio";
+	return "gemini";
 }
 
 async function configureGemini(): Promise<GeminiConfig> {
@@ -326,39 +365,80 @@ async function configureOllama(): Promise<OllamaConfig> {
 	return { url: ollamaUrl, model: selectedModel };
 }
 
+async function configureLMStudio(): Promise<LMStudioConfig> {
+	console.log("This wizard will configure the connection to your LM Studio instance.\n");
+	console.log("Ensure LM Studio is running and the Local Server is started.");
+
+	let url = DEFAULT_LMSTUDIO_URL;
+	let connected = false;
+
+	// Try to connect
+	logInfo(`Checking LM Studio at ${url}...`);
+
+	while (!connected) {
+		connected = await checkLMStudioConnection(url);
+
+		if (!connected) {
+			url = await promptForLMStudioUrl();
+			logInfo(`Checking LM Studio at ${url}...`);
+		}
+	}
+
+	logSuccess(`Connected to LM Studio at ${url}`);
+
+	// Fetch and select model
+	let models: string[];
+	try {
+		models = await fetchLMStudioModels(url);
+	} catch (error) {
+		logError(`${error}`);
+		process.exit(1);
+	}
+
+	if (models.length === 0) {
+		logError("No loaded models found in LM Studio. Please load a model in LM Studio first.");
+		process.exit(1);
+	}
+
+	const selectedModel = await promptForModel(models);
+	return { url, model: selectedModel };
+}
+
 export async function runSetup(): Promise<Config> {
 	console.log(bold("\n🔧 AI CLI Setup\n"));
 
 	const provider = await promptForProvider();
 
-	let ollamaConfig: OllamaConfig;
+	let ollamaConfig: OllamaConfig | undefined;
 	let geminiConfig: GeminiConfig | undefined;
+	let lmStudioConfig: LMStudioConfig | undefined;
 
 	if (provider === "ollama") {
 		ollamaConfig = await configureOllama();
+	} else if (provider === "lm_studio") {
+		lmStudioConfig = await configureLMStudio();
 	} else {
 		geminiConfig = await configureGemini();
-		// We still need a valid Ollama config structure for the types, even if unused?
-		// The Config type has OllamaConfig as required. 
-		// We should populate it with defaults or dummy values if not used, 
-		// OR we should have made it optional in Config (which I didn't do).
-		// Let's set it to defaults for now to satisfy the type.
-		ollamaConfig = { url: DEFAULT_OLLAMA_URL, model: "qwen2.5-coder" };
 	}
 
 	const config: Config = {
 		active_provider: provider,
 		ollama: ollamaConfig,
 		gemini: geminiConfig,
+		lm_studio: lmStudioConfig,
 		default: { max_commands: 7, max_planning_iterations: 5 },
 		agent: { max_commands: 10, max_planning_iterations: 5 },
 	};
+
 
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
 	if (provider === "ollama") {
 		console.log(cyan(`  Ollama URL: ${config.ollama.url}`));
 		console.log(cyan(`  Model: ${config.ollama.model}\n`));
+	} else if (provider === "lm_studio" && config.lm_studio) {
+		console.log(cyan(`  LM Studio URL: ${config.lm_studio.url}`));
+		console.log(cyan(`  Model: ${config.lm_studio.model}\n`));
 	} else {
 		console.log(cyan(`  Provider: Gemini (Web)\n`));
 	}
