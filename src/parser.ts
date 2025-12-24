@@ -29,23 +29,10 @@ function parseLine(line: string): ParsedCommand | null {
 	// Split by semicolon, but handle potential edge cases
 	const parts = trimmed.split(";");
 
-	if (parts.length < 3) {
-		// If there's only one or two parts, try to make sense of it
-		if (parts.length === 1) {
-			// Could be just a comment
-			return {
-				command: "",
-				tools: [],
-				comment: parts[0].trim(),
-			};
-		}
-		if (parts.length === 2) {
-			return {
-				command: parts[0].trim(),
-				tools: parts[1].trim().split(/\s+/).filter(Boolean),
-				comment: "",
-			};
-		}
+	if (parts.length < 2) {
+		// If there are no semicolons, it's not a valid command format
+		// This filters out conversational text like "Here is the command:" or follow-up questions
+		return null;
 	}
 
 	// Join everything after the second semicolon as the comment (in case comment contains semicolons)

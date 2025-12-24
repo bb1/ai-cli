@@ -101,6 +101,35 @@ ls -la;ls;List files`;
 
 		expect(result.isError).toBe(true);
 	});
+
+	// Regression test for conversational text after CSV
+	test("ignores conversational text after valid CSV", () => {
+		const response = `
+ls -la;ls;list files
+echo hello;echo;say hello
+
+Is there anything else I can help you with?
+`;
+		const result = parseResponse(response);
+
+		expect(result.isError).toBe(false);
+		expect(result.commands.length).toBe(2);
+		expect(result.commands[0].command).toBe("ls -la");
+		expect(result.commands[1].command).toBe("echo hello");
+	});
+
+	test("ignores conversational text before valid CSV", () => {
+		const response = `
+Here are the commands you requested:
+
+ls -la;ls;list files
+`;
+		const result = parseResponse(response);
+
+		expect(result.isError).toBe(false);
+		expect(result.commands.length).toBe(1);
+		expect(result.commands[0].command).toBe("ls -la");
+	});
 });
 
 describe("isAgentDone", () => {
