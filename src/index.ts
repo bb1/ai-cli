@@ -3,9 +3,9 @@
 import { runAgentMode } from "./agent.ts";
 import { type Config, loadConfig } from "./config.ts";
 import { confirmCommand, executeCommands, getAdjustedQuery, validateTools } from "./executor.ts";
-import { generate, retryWithMissingTool } from "./ollama.ts";
 import { extractAllTools, parseResponse } from "./parser.ts";
 import { runPlanningPhase } from "./planning.ts";
+import { getProvider } from "./providers/index.ts";
 import { buildSystemPrompt, formatUserQuery } from "./prompt.ts";
 import { runSetup } from "./setup.ts";
 import { runUpdate } from "./update.ts";
@@ -76,7 +76,8 @@ async function runSingleQuery(config: Config, query: string): Promise<void> {
 				shellHistory: planningContext.shellHistory,
 				draft: planningContext.draft,
 			});
-			response = await generate(config, formatUserQuery(currentQuery), systemPrompt);
+			const provider = getProvider(config);
+			response = await provider.generate(formatUserQuery(currentQuery), systemPrompt);
 		} catch (error) {
 			logError(`Failed to get response: ${error}`);
 			return;
@@ -104,7 +105,8 @@ async function runSingleQuery(config: Config, query: string): Promise<void> {
 			if (retryCount < maxRetries) {
 				logInfo("Retrying with alternative tools...");
 				try {
-					response = await retryWithMissingTool(config, currentQuery, validation.missing);
+					const provider = getProvider(config);
+					response = await provider.retryWithMissingTool(currentQuery, validation.missing);
 					const retryParsed = parseResponse(response, config.default.max_commands);
 
 					if (!retryParsed.isError && retryParsed.commands.length > 0) {

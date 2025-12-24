@@ -1,6 +1,6 @@
 import type { Config } from "./config.ts";
 import { checkBinaryExists } from "./executor.ts";
-import { generate } from "./ollama.ts";
+import { getProvider } from "./providers/index.ts";
 import { buildPlanningSystemPrompt } from "./prompt.ts";
 import { getHomeDir, logInfo, yellow } from "./utils.ts";
 
@@ -202,23 +202,25 @@ export async function runPlanningPhase(
 	};
 
 	// Quick check if Ollama is reachable before starting planning
-	try {
-		const testResponse = await fetch(`${config.ollama.url}/api/tags`, {
-			signal: AbortSignal.timeout(2000),
-		});
-		if (!testResponse.ok) {
-			// Ollama is not responding, skip planning
+	if (config.active_provider === "ollama") {
+		try {
+			const testResponse = await fetch(`${config.ollama.url}/api/tags`, {
+				signal: AbortSignal.timeout(2000),
+			});
+			if (!testResponse.ok) {
+				// Ollama is not responding, skip planning
+				if (isDevMode) {
+					logInfo("⚠️  Ollama not reachable, skipping planning phase");
+				}
+				return context;
+			}
+		} catch {
+			// Connection error, skip planning
 			if (isDevMode) {
-				logInfo("⚠️  Ollama not reachable, skipping planning phase");
+				logInfo("⚠️  Cannot connect to Ollama, skipping planning phase");
 			}
 			return context;
 		}
-	} catch {
-		// Connection error, skip planning
-		if (isDevMode) {
-			logInfo("⚠️  Cannot connect to Ollama, skipping planning phase");
-		}
-		return context;
 	}
 
 	let iteration = 0;
@@ -235,7 +237,8 @@ export async function runPlanningPhase(
 		try {
 			const systemPrompt = buildPlanningSystemPrompt(iteration, maxIterations, context);
 			const userPrompt = `User request: ${query}`;
-			const response = await generate(config, userPrompt, systemPrompt);
+			const provider = getProvider(config);
+			const response = await provider.generate(userPrompt, systemPrompt);
 
 			if (isDevMode) {
 				console.log(yellow(`\nPlanning response:\n${response}\n`));

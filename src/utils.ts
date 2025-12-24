@@ -64,25 +64,10 @@ export function getHomeDir(): string {
 }
 
 // Read line from stdin
-export async function readLine(prompt: string): Promise<string> {
-	process.stdout.write(prompt);
-
-	const reader = Bun.stdin.stream().getReader();
-	const decoder = new TextDecoder();
-	let result = "";
-
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
-
-		result += decoder.decode(value, { stream: true });
-		if (result.includes("\n")) {
-			reader.releaseLock();
-			break;
-		}
-	}
-
-	return result.trim();
+// Read line from stdin using native Bun prompt
+export async function readLine(text: string): Promise<string> {
+	const result = prompt(text);
+	return result || "";
 }
 
 // Print to stderr for errors

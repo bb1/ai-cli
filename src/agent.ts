@@ -1,7 +1,7 @@
 import type { Config } from "./config.ts";
 import { executeCommand, validateTools } from "./executor.ts";
-import { generate } from "./ollama.ts";
 import { extractAllTools, isAgentDone, parseResponse } from "./parser.ts";
+import { getProvider } from "./providers/index.ts";
 import { buildAgentSystemPrompt } from "./prompt.ts";
 import { checkCommandsSafety, formatSafetyWarnings } from "./safety.ts";
 import { bold, cyan, dim, green, logError, readLine, red, yellow } from "./utils.ts";
@@ -40,11 +40,13 @@ export async function runAgentMode(config: Config, query: string): Promise<void>
 		try {
 			if (state.iteration === 1) {
 				// First iteration - just send the query
-				response = await generate(config, `User request: ${query}`);
+				const provider = getProvider(config);
+				response = await provider.generate(`User request: ${query}`);
 			} else {
 				// Subsequent iterations - include previous output
 				const systemPrompt = buildAgentSystemPrompt(state.lastOutput, state.iteration);
-				response = await generate(config, `Continue the task: ${query}`, systemPrompt);
+				const provider = getProvider(config);
+				response = await provider.generate(`Continue the task: ${query}`, systemPrompt);
 			}
 		} catch (error) {
 			logError(`Failed to get response from LLM: ${error}`);

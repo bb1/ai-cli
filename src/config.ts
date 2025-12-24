@@ -6,16 +6,22 @@ export interface OllamaConfig {
 	model: string;
 }
 
+export interface GeminiConfig {
+	cookies: Record<string, string>;
+}
+
 export interface DefaultConfig {
 	max_commands: number;
 	max_planning_iterations: number;
 }
 
 /** Inherits from default if not specified */
-export interface AgentConfig extends DefaultConfig {}
+export interface AgentConfig extends DefaultConfig { }
 
 export interface Config {
+	active_provider: "ollama" | "gemini";
 	ollama: OllamaConfig;
+	gemini?: GeminiConfig;
 	default: DefaultConfig;
 	agent: AgentConfig;
 }
@@ -25,6 +31,8 @@ const DEFAULTS: DefaultConfig = {
 	max_commands: 7,
 	max_planning_iterations: 5,
 };
+
+const DEFAULT_PROVIDER = "ollama";
 
 const CONFIG_FILENAME = ".ai-config.toml";
 
@@ -69,7 +77,9 @@ function mergeWithDefaults(parsed: Record<string, unknown>): Config {
 	};
 
 	return {
+		active_provider: (parsed.active_provider as "ollama" | "gemini") || DEFAULT_PROVIDER,
 		ollama: ollamaSection,
+		gemini: parsed.gemini as GeminiConfig | undefined,
 		default: defaultConfig,
 		agent: agentConfig,
 	};
@@ -112,7 +122,9 @@ export async function saveConfig(config: Config, global = true): Promise<void> {
 	const targetPath = global ? paths.global : paths.local;
 
 	const tomlContent = TOML.stringify({
+		active_provider: config.active_provider,
 		ollama: config.ollama,
+		gemini: config.gemini,
 		default: config.default,
 		agent: config.agent,
 	});
@@ -131,7 +143,20 @@ function validateConfigRequired(config: unknown): boolean {
 		return false;
 	}
 	const ollama = c.ollama as Record<string, unknown>;
-	return typeof ollama.url === "string" && typeof ollama.model === "string";
+	if (typeof ollama.url !== "string" || typeof ollama.model !== "string") {
+		return false;
+	}
+
+	// Active provider must be valid string if present
+	if (
+		c.active_provider !== undefined &&
+		c.active_provider !== "ollama" &&
+		c.active_provider !== "gemini"
+	) {
+		return false;
+	}
+
+	return true;
 }
 
 export function validateConfig(config: unknown): config is Config {

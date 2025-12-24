@@ -1,4 +1,4 @@
-import { type Config, saveConfig } from "./config.ts";
+import { type Config, type GeminiConfig, type OllamaConfig, saveConfig } from "./config.ts";
 // biome-ignore lint/correctness/noUnusedImports: cyan is used in multiple places (lines 83, 169, 279, 293, 294)
 import { bold, cyan, green, logError, logInfo, logSuccess, readLine, yellow } from "./utils.ts";
 
@@ -245,8 +245,49 @@ async function promptForModel(models: string[]): Promise<string> {
 	}
 }
 
-export async function runSetup(): Promise<Config> {
-	console.log(bold("\n🔧 AI CLI Setup\n"));
+async function promptForProvider(): Promise<"ollama" | "gemini"> {
+	console.log(bold("\n🤖 Select AI Provider:\n"));
+	const options = ["Ollama (Local)", "Gemini (Web)"];
+
+	// Reuse a simplified version of promptForModel logic or just use readLine for 2 options? 
+	// The promptForModel logic is quite ui-heavy. Let's make a simple selection list reusable or just duplicat parts of it?
+	// promptForModel is deeply coupled with the models array.
+	// Let's implement a simple selection here using the standard input flow 
+	// BUT since we want to be "premium", let's use the arrow key selection if possible.
+	// Actually, promptForModel is generic enough if we pass ["Ollama", "Gemini"].
+
+	// We can extract a generic promptForSelection if we wanted, but to minimize diffs, let's just use a simple numbered input for now 
+	// OR just copy/paste the UI logic if we really want it fancy.
+	// Given the instructions "Design Aesthetics... WOW the user", I should probably use the fancy selector or refactor it.
+	// But refactoring promptForModel is risky with replace_file_content.
+	// I will use a simple numbered list for this step to reduce complexity, as "WOW" usually applies to the WEB APP not the CLI setup.
+	// Wait, "AI CLI Setup" - users will see this. 
+	// Let's us use the promptForModel logic but adapted.
+
+	// Actually, I can just use promptForModel(options) and map back.
+	const selection = await promptForModel(options);
+	return selection.startsWith("Ollama") ? "ollama" : "gemini";
+}
+
+async function configureGemini(): Promise<GeminiConfig> {
+	console.log(bold("\n♊ Gemini Setup\n"));
+	console.log("Please provide your Gemini cookies from gemini.google.com");
+	console.log("1. Open gemini.google.com (make sure you are logged in)");
+	console.log("2. Open Developer Tools (F12) -> Application -> Cookies");
+	console.log("3. Copy the values for __Secure-1PSID and __Secure-1PSIDTS\n");
+
+	const psid = await readLine(cyan("Enter __Secure-1PSID: "));
+	const psidts = await readLine(cyan("Enter __Secure-1PSIDTS: "));
+
+	return {
+		cookies: {
+			"__Secure-1PSID": psid.trim(),
+			"__Secure-1PSIDTS": psidts.trim(),
+		},
+	};
+}
+
+async function configureOllama(): Promise<OllamaConfig> {
 	console.log("This wizard will configure the connection to your Ollama instance.\n");
 
 	let ollamaUrl = DEFAULT_OLLAMA_URL;
@@ -282,17 +323,45 @@ export async function runSetup(): Promise<Config> {
 	}
 
 	const selectedModel = await promptForModel(models);
+	return { url: ollamaUrl, model: selectedModel };
+}
+
+export async function runSetup(): Promise<Config> {
+	console.log(bold("\n🔧 AI CLI Setup\n"));
+
+	const provider = await promptForProvider();
+
+	let ollamaConfig: OllamaConfig;
+	let geminiConfig: GeminiConfig | undefined;
+
+	if (provider === "ollama") {
+		ollamaConfig = await configureOllama();
+	} else {
+		geminiConfig = await configureGemini();
+		// We still need a valid Ollama config structure for the types, even if unused?
+		// The Config type has OllamaConfig as required. 
+		// We should populate it with defaults or dummy values if not used, 
+		// OR we should have made it optional in Config (which I didn't do).
+		// Let's set it to defaults for now to satisfy the type.
+		ollamaConfig = { url: DEFAULT_OLLAMA_URL, model: "qwen2.5-coder" };
+	}
 
 	const config: Config = {
-		ollama: { url: ollamaUrl, model: selectedModel },
+		active_provider: provider,
+		ollama: ollamaConfig,
+		gemini: geminiConfig,
 		default: { max_commands: 7, max_planning_iterations: 5 },
 		agent: { max_commands: 10, max_planning_iterations: 5 },
 	};
 
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
-	console.log(cyan(`  Ollama URL: ${config.ollama.url}`));
-	console.log(cyan(`  Model: ${config.ollama.model}\n`));
+	if (provider === "ollama") {
+		console.log(cyan(`  Ollama URL: ${config.ollama.url}`));
+		console.log(cyan(`  Model: ${config.ollama.model}\n`));
+	} else {
+		console.log(cyan(`  Provider: Gemini (Web)\n`));
+	}
 
 	return config;
 }
