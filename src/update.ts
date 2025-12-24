@@ -1,3 +1,4 @@
+import { $ } from "bun";
 import { cyan, green, logError, logInfo, logSuccess, yellow } from "./utils.ts";
 
 const REPO = "bb1/ai-cli";
@@ -16,8 +17,7 @@ interface SystemInfo {
  */
 async function isWritable(path: string): Promise<boolean> {
 	try {
-		const result = await Bun.spawn(["test", "-w", path]).exited;
-		return result === 0;
+		return (await $`test -w ${path}`.quiet()).exitCode === 0;
 	} catch {
 		return false;
 	}
@@ -96,22 +96,17 @@ async function getInstalledVersion(binaryPath: string): Promise<string | null> {
 	}
 
 	try {
-		const proc = Bun.spawn([binaryPath, "--version"], {
-			stdout: "pipe",
-			stderr: "pipe",
-		});
+		const result = await $`${binaryPath} --version`.quiet();
 
-		const [stdout, _stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-
-		const exitCode = await proc.exited;
-
-		if (exitCode !== 0) {
-			if (_stderr.trim()) {
-				logError(`Failed to get version: ${_stderr.trim()}`);
+		if (result.exitCode !== 0) {
+			const stderr = result.stderr.toString().trim();
+			if (stderr) {
+				logError(`Failed to get version: ${stderr}`);
 			}
 			return null;
 		}
 
+		const stdout = result.stdout.toString();
 		// Extract version number (handles formats like "ai v0.4.0" or "v0.4.0" or "0.4.0")
 		const match = stdout.match(/[vV]?([0-9]+\.[0-9]+\.[0-9]+)/);
 		if (match?.[1]) {
@@ -162,12 +157,7 @@ async function installBinary(system: string, version: string, existingPath: stri
 	logInfo(`Downloading ${BINARY_NAME} ${version} for ${system}...`);
 
 	// Create temporary directory
-	const tmpdirProc = Bun.spawn(["mktemp", "-d"], {
-		stdout: "pipe",
-		stderr: "pipe",
-	});
-	const tmpdirPath = (await new Response(tmpdirProc.stdout).text()).trim();
-	await tmpdirProc.exited;
+	const tmpdirPath = (await $`mktemp -d`.text()).trim();
 
 	try {
 		// Download archive
@@ -182,16 +172,16 @@ async function installBinary(system: string, version: string, existingPath: stri
 		await Bun.write(archivePath, response);
 
 		// Extract archive
-		const unzipResult = await Bun.spawn(["unzip", "-q", archivePath, "-d", tmpdirPath], { stderr: "pipe" }).exited;
+		const unzipResult = await $`unzip -q ${archivePath} -d ${tmpdirPath}`.quiet();
 
-		if (unzipResult !== 0) {
+		if (unzipResult.exitCode !== 0) {
 			logError(`Failed to extract ${archive}`);
 			throw new Error(`Failed to extract ${archive}`);
 		}
 
 		// Make binary executable
 		const binaryPath = `${tmpdirPath}/${filename}`;
-		await Bun.spawn(["chmod", "+x", binaryPath]).exited;
+		await $`chmod +x ${binaryPath}`.quiet();
 
 		// Determine install location
 		let installPath: string;
@@ -220,10 +210,7 @@ async function installBinary(system: string, version: string, existingPath: stri
 					installPath = `${INSTALL_DIR}/${BINARY_NAME}`;
 				} else {
 					installPath = `${USER_INSTALL_DIR}/${BINARY_NAME}`;
-					await Bun.spawn(["mkdir", "-p", USER_INSTALL_DIR], {
-						stdout: "pipe",
-						stderr: "pipe",
-					}).exited;
+					await $`mkdir -p ${USER_INSTALL_DIR}`.quiet();
 				}
 			}
 		}
@@ -232,18 +219,14 @@ async function installBinary(system: string, version: string, existingPath: stri
 		if (existingPath && backupPath) {
 			logInfo("Backing up existing installation...");
 			if (needsSudo) {
-				const result = await Bun.spawn(["sudo", "mv", existingPath, backupPath], { stdout: "pipe", stderr: "pipe" })
-					.exited;
-				if (result !== 0) {
+				const result = await $`sudo mv ${existingPath} ${backupPath}`.quiet();
+				if (result.exitCode !== 0) {
 					logError("Failed to backup existing installation");
 					throw new Error("Failed to backup existing installation");
 				}
 			} else {
-				const result = await Bun.spawn(["mv", existingPath, backupPath], {
-					stdout: "pipe",
-					stderr: "pipe",
-				}).exited;
-				if (result !== 0) {
+				const result = await $`mv ${existingPath} ${backupPath}`.quiet();
+				if (result.exitCode !== 0) {
 					logError("Failed to backup existing installation");
 					throw new Error("Failed to backup existing installation");
 				}
@@ -261,30 +244,22 @@ async function installBinary(system: string, version: string, existingPath: stri
 
 		try {
 			if (needsSudo) {
-				const mvResult = await Bun.spawn(["sudo", "mv", binaryPath, installPath], { stdout: "pipe", stderr: "pipe" })
-					.exited;
-				if (mvResult !== 0) {
+				const mvResult = await $`sudo mv ${binaryPath} ${installPath}`.quiet();
+				if (mvResult.exitCode !== 0) {
 					installFailed = true;
 				} else {
-					const chmodResult = await Bun.spawn(["sudo", "chmod", "+x", installPath], { stdout: "pipe", stderr: "pipe" })
-						.exited;
-					if (chmodResult !== 0) {
+					const chmodResult = await $`sudo chmod +x ${installPath}`.quiet();
+					if (chmodResult.exitCode !== 0) {
 						installFailed = true;
 					}
 				}
 			} else {
-				const mvResult = await Bun.spawn(["mv", binaryPath, installPath], {
-					stdout: "pipe",
-					stderr: "pipe",
-				}).exited;
-				if (mvResult !== 0) {
+				const mvResult = await $`mv ${binaryPath} ${installPath}`.quiet();
+				if (mvResult.exitCode !== 0) {
 					installFailed = true;
 				} else {
-					const chmodResult = await Bun.spawn(["chmod", "+x", installPath], {
-						stdout: "pipe",
-						stderr: "pipe",
-					}).exited;
-					if (chmodResult !== 0) {
+					const chmodResult = await $`chmod +x ${installPath}`.quiet();
+					if (chmodResult.exitCode !== 0) {
 						installFailed = true;
 					}
 				}
@@ -302,12 +277,9 @@ async function installBinary(system: string, version: string, existingPath: stri
 				if (await backupFile.exists()) {
 					logError("Restoring previous installation...");
 					if (needsSudo) {
-						await Bun.spawn(["sudo", "mv", backupPath, installPath], { stdout: "pipe", stderr: "pipe" }).exited;
+						await $`sudo mv ${backupPath} ${installPath}`.quiet();
 					} else {
-						await Bun.spawn(["mv", backupPath, installPath], {
-							stdout: "pipe",
-							stderr: "pipe",
-						}).exited;
+						await $`mv ${backupPath} ${installPath}`.quiet();
 					}
 				}
 			}
@@ -321,15 +293,9 @@ async function installBinary(system: string, version: string, existingPath: stri
 			const backupFile = Bun.file(backupPath);
 			if (await backupFile.exists()) {
 				if (needsSudo) {
-					await Bun.spawn(["sudo", "rm", "-f", backupPath], {
-						stdout: "pipe",
-						stderr: "pipe",
-					}).exited;
+					await $`sudo rm -f ${backupPath}`.quiet();
 				} else {
-					await Bun.spawn(["rm", "-f", backupPath], {
-						stdout: "pipe",
-						stderr: "pipe",
-					}).exited;
+					await $`rm -f ${backupPath}`.quiet();
 				}
 			}
 		}
@@ -353,10 +319,7 @@ async function installBinary(system: string, version: string, existingPath: stri
 		console.log(green(`Run '${BINARY_NAME} --version' to verify installation`));
 	} finally {
 		// Clean up temporary directory
-		await Bun.spawn(["rm", "-r", "-f", tmpdirPath], {
-			stdout: "pipe",
-			stderr: "pipe",
-		}).exited;
+		await $`rm -rf ${tmpdirPath}`.quiet();
 	}
 }
 
