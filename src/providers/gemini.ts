@@ -1,9 +1,11 @@
 import { type Config, saveConfig } from "../config.ts";
 import { getOSInfo } from "../utils.ts";
+import { parseGeminiResponse } from "./gemini_parser.ts";
 import type { AIProvider } from "./interface.ts";
 
 export class GeminiProvider implements AIProvider {
     private snlm0e?: string;
+    private bl?: string;
 
     constructor(private config: Config) { }
 
@@ -76,7 +78,15 @@ export class GeminiProvider implements AIProvider {
             throw new Error("Could not find SNlM0e nonce. Cookies might be invalid.");
         }
 
+        // Extract bl (version) value
+        // usually in CF_BIC: "boq_assistant-bard-web-server_20240519.16_p0"
+        const blMatch = text.match(/"cfb2h":"([^"]+)"/);
+        // Fallback or specific regex might be needed. use a simpler loose match for the version string if cfb2h isn't found
+        // The version usually starts with boq_assistant-bard-web-server_
+        const blVersionMatch = text.match(/(boq_assistant-bard-web-server_[^"]+)/);
+
         this.snlm0e = match[1];
+        this.bl = blMatch ? blMatch[1] : (blVersionMatch ? blVersionMatch[1] : "boq_assistant-bard-web-server_20240519.16_p0");
         return this.snlm0e;
     }
 
@@ -89,7 +99,7 @@ export class GeminiProvider implements AIProvider {
         const cookieHeader = this.getCookieHeader();
 
         const params = new URLSearchParams();
-        params.append("bl", "boq_assistant-bard-web-server_20240519.16_p0"); // Example version
+        params.append("bl", this.bl || "boq_assistant-bard-web-server_20240519.16_p0");
         params.append("_reqid", Math.floor(Math.random() * 100000).toString());
         params.append("rt", "c");
 
@@ -104,7 +114,8 @@ export class GeminiProvider implements AIProvider {
                 },
                 // This body is highly specific and likely needs a proper encoder.
                 // For the first pass, we will try to just signal intent or fail gracefully if we can't implement the full protocol.
-                body: `f.req=${encodeURIComponent(JSON.stringify([null, `[[${JSON.stringify(prompt + "\n\nSystem: " + systemPrompt)}],null,["conversation-id",null,null,null,null,[]]]`]))}&at=${snlm0e}`,
+                // fix conversation-id to be strictly valid json struct for new chat
+                body: `f.req=${encodeURIComponent(JSON.stringify([null, `[[${JSON.stringify(prompt + "\n\nSystem: " + systemPrompt)}],null,["",null,null,null,null,[]]]`]))}&at=${snlm0e}`,
             });
 
             await this.updateCookies(response.headers);
@@ -124,10 +135,7 @@ export class GeminiProvider implements AIProvider {
     }
 
     private parseGeminiResponse(text: string): string {
-        // Private API returns a streaming array of arrays.
-        // This needs a robust parser. For now, we return the raw text to debug,
-        // or attempting to find the specific content block.
-        return text;
+        return parseGeminiResponse(text);
     }
 
     async generate(prompt: string, systemPrompt?: string): Promise<string> {
