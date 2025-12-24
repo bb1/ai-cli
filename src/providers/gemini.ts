@@ -108,6 +108,11 @@ export class GeminiProvider extends BaseProvider {
 		params.append("rt", "c");
 
 		try {
+			// fix conversation-id to be strictly valid json struct for new chat
+			const message = `SYSTEM:\n${systemPrompt}\n\nUSER:\n${prompt}`;
+			const innerPayload = `[[${JSON.stringify(message)},null,["",null,null,null,null,[]]]`;
+			const fReq = JSON.stringify([null, innerPayload]);
+
 			const response = await fetch(
 				"https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?" +
 					params.toString(),
@@ -122,8 +127,7 @@ export class GeminiProvider extends BaseProvider {
 					},
 					// This body is highly specific and likely needs a proper encoder.
 					// For the first pass, we will try to just signal intent or fail gracefully if we can't implement the full protocol.
-					// fix conversation-id to be strictly valid json struct for new chat
-					body: `f.req=${encodeURIComponent(JSON.stringify([null, `[[${JSON.stringify("SYSTEM:\n" + systemPrompt + "\n\nUSER:\n" + prompt)},null,["",null,null,null,null,[]]]`]))}&at=${snlm0e}`,
+					body: `f.req=${encodeURIComponent(fReq)}&at=${snlm0e}`,
 				},
 			);
 

@@ -23,7 +23,7 @@ export function parseGeminiResponse(text: string): string {
 	// However, the length prefix might be on its own line.
 
 	const lines = cleanText.split("\n");
-	const chunks: any[] = [];
+	const chunks: unknown[] = [];
 
 	for (const line of lines) {
 		const trimmed = line.trim();
@@ -35,7 +35,7 @@ export function parseGeminiResponse(text: string): string {
 		try {
 			const parsed = JSON.parse(trimmed);
 			chunks.push(parsed);
-		} catch (e) {
+		} catch (_e) {
 			// Not valid JSON, maybe part of a stream or partial line?
 			// For now, ignore invalid lines.
 		}
@@ -45,27 +45,29 @@ export function parseGeminiResponse(text: string): string {
 	for (const chunk of chunks) {
 		// Look for the array that contains "wrb.fr"
 		// Structure: [["wrb.fr", null, "STRINGIFIED_JSON", ...]]
-		const inner = chunk[0];
-		if (Array.isArray(inner) && inner[0] === "wrb.fr") {
-			const payloadStr = inner[2];
-			if (typeof payloadStr === "string") {
-				try {
-					const payload = JSON.parse(payloadStr);
-					// Payload structure: [null, [conv_id, resp_id], null, null, candidates_array, ...]
-					// candidates_array: [[candidate_id, ["TEXT_RESPONSE"], ...]]
+		if (Array.isArray(chunk)) {
+			const inner = chunk[0];
+			if (Array.isArray(inner) && inner[0] === "wrb.fr") {
+				const payloadStr = inner[2];
+				if (typeof payloadStr === "string") {
+					try {
+						const payload = JSON.parse(payloadStr);
+						// Payload structure: [null, [conv_id, resp_id], null, null, candidates_array, ...]
+						// candidates_array: [[candidate_id, ["TEXT_RESPONSE"], ...]]
 
-					const candidates = payload[4];
-					if (Array.isArray(candidates) && candidates.length > 0) {
-						const firstCandidate = candidates[0];
-						if (Array.isArray(firstCandidate) && firstCandidate.length > 1) {
-							const textParts = firstCandidate[1];
-							if (Array.isArray(textParts) && textParts.length > 0) {
-								return textParts[0];
+						const candidates = payload[4];
+						if (Array.isArray(candidates) && candidates.length > 0) {
+							const firstCandidate = candidates[0];
+							if (Array.isArray(firstCandidate) && firstCandidate.length > 1) {
+								const textParts = firstCandidate[1];
+								if (Array.isArray(textParts) && textParts.length > 0) {
+									return textParts[0];
+								}
 							}
 						}
+					} catch (e) {
+						console.error("Failed to parse inner payload:", e);
 					}
-				} catch (e) {
-					console.error("Failed to parse inner payload:", e);
 				}
 			}
 		}

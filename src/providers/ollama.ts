@@ -49,8 +49,8 @@ export class OllamaProvider extends BaseProvider {
 			) {
 				throw new Error(
 					`Cannot connect to Ollama at ${this.config.ollama?.url}.\n` +
-					`Is Ollama running? Try: ollama serve\n` +
-					`Or check your config: ai setup`,
+						`Is Ollama running? Try: ollama serve\n` +
+						`Or check your config: ai setup`,
 				);
 			}
 			// Re-throw other errors as-is
