@@ -52,10 +52,7 @@ function detectSystem(): SystemInfo {
  * Find existing installation
  */
 async function findExistingInstallation(): Promise<string | null> {
-	const locations = [
-		`${INSTALL_DIR}/${BINARY_NAME}`,
-		`${USER_INSTALL_DIR}/${BINARY_NAME}`,
-	];
+	const locations = [`${INSTALL_DIR}/${BINARY_NAME}`, `${USER_INSTALL_DIR}/${BINARY_NAME}`];
 
 	// Also check PATH using Bun.which
 	const whichPath = Bun.which(BINARY_NAME);
@@ -92,10 +89,7 @@ async function getInstalledVersion(binaryPath: string): Promise<string | null> {
 			stderr: "pipe",
 		});
 
-		const [stdout, stderr] = await Promise.all([
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-		]);
+		const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 
 		const exitCode = await proc.exited;
 
@@ -145,11 +139,7 @@ async function getLatestRelease(): Promise<string> {
 /**
  * Download and install binary
  */
-async function installBinary(
-	system: string,
-	version: string,
-	existingPath: string | null,
-): Promise<void> {
+async function installBinary(system: string, version: string, existingPath: string | null): Promise<void> {
 	const filename = `ai-${system}`;
 	const archive = `${filename}.zip`;
 	const downloadUrl = `https://github.com/${REPO}/releases/download/v${version}/${archive}`;
@@ -177,10 +167,7 @@ async function installBinary(
 		await Bun.write(archivePath, response);
 
 		// Extract archive
-		const unzipResult = await Bun.spawn(
-			["unzip", "-q", archivePath, "-d", tmpdirPath],
-			{ stderr: "pipe" },
-		).exited;
+		const unzipResult = await Bun.spawn(["unzip", "-q", archivePath, "-d", tmpdirPath], { stderr: "pipe" }).exited;
 
 		if (unzipResult !== 0) {
 			logError(`Failed to extract ${archive}`);
@@ -228,10 +215,8 @@ async function installBinary(
 		if (existingPath && backupPath) {
 			logInfo("Backing up existing installation...");
 			if (needsSudo) {
-				const result = await Bun.spawn(
-					["sudo", "mv", existingPath, backupPath],
-					{ stdout: "pipe", stderr: "pipe" },
-				).exited;
+				const result = await Bun.spawn(["sudo", "mv", existingPath, backupPath], { stdout: "pipe", stderr: "pipe" })
+					.exited;
 				if (result !== 0) {
 					logError("Failed to backup existing installation");
 					throw new Error("Failed to backup existing installation");
@@ -259,17 +244,13 @@ async function installBinary(
 
 		try {
 			if (needsSudo) {
-				const mvResult = await Bun.spawn(
-					["sudo", "mv", binaryPath, installPath],
-					{ stdout: "pipe", stderr: "pipe" },
-				).exited;
+				const mvResult = await Bun.spawn(["sudo", "mv", binaryPath, installPath], { stdout: "pipe", stderr: "pipe" })
+					.exited;
 				if (mvResult !== 0) {
 					installFailed = true;
 				} else {
-					const chmodResult = await Bun.spawn(
-						["sudo", "chmod", "+x", installPath],
-						{ stdout: "pipe", stderr: "pipe" },
-					).exited;
+					const chmodResult = await Bun.spawn(["sudo", "chmod", "+x", installPath], { stdout: "pipe", stderr: "pipe" })
+						.exited;
 					if (chmodResult !== 0) {
 						installFailed = true;
 					}
@@ -295,7 +276,7 @@ async function installBinary(
 			installFailed = true;
 		}
 
-			// Verify installation
+		// Verify installation
 		const installedFile = Bun.file(installPath);
 		if (installFailed || !(await installedFile.exists())) {
 			// Restore backup if it exists
@@ -304,10 +285,7 @@ async function installBinary(
 				if (await backupFile.exists()) {
 					logError("Restoring previous installation...");
 					if (needsSudo) {
-						await Bun.spawn(
-							["sudo", "mv", backupPath, installPath],
-							{ stdout: "pipe", stderr: "pipe" },
-						).exited;
+						await Bun.spawn(["sudo", "mv", backupPath, installPath], { stdout: "pipe", stderr: "pipe" }).exited;
 					} else {
 						await Bun.spawn(["mv", backupPath, installPath], {
 							stdout: "pipe",
@@ -351,11 +329,7 @@ async function installBinary(
 		if (installPath === `${USER_INSTALL_DIR}/${BINARY_NAME}`) {
 			const pathEnv = process.env.PATH || "";
 			if (!pathEnv.includes(USER_INSTALL_DIR)) {
-				console.log(
-					yellow(
-						`Note: ${USER_INSTALL_DIR} is not in your PATH. Add it to your shell profile.`,
-					),
-				);
+				console.log(yellow(`Note: ${USER_INSTALL_DIR} is not in your PATH. Add it to your shell profile.`));
 			}
 		}
 
@@ -413,4 +387,3 @@ export async function runUpdate(): Promise<void> {
 
 	await installBinary(systemInfo.system, latestVersion, existingPath);
 }
-

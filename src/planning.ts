@@ -1,7 +1,7 @@
 import type { Config } from "./config.ts";
 import { checkBinaryExists } from "./executor.ts";
-import { getProvider } from "./providers/index.ts";
 import { buildPlanningSystemPrompt } from "./prompt.ts";
+import { getProvider } from "./providers/index.ts";
 import { getHomeDir, logInfo, yellow } from "./utils.ts";
 
 export interface PlanningResponse {

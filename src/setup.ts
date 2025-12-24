@@ -430,7 +430,6 @@ export async function runSetup(): Promise<Config> {
 		agent: { max_commands: 10, max_planning_iterations: 5 },
 	};
 
-
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
 	if (provider === "ollama") {

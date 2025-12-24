@@ -21,7 +21,7 @@ export interface DefaultConfig {
 }
 
 /** Inherits from default if not specified */
-export interface AgentConfig extends DefaultConfig { }
+export interface AgentConfig extends DefaultConfig {}
 
 export interface Config {
 	active_provider: "ollama" | "gemini" | "lm_studio";

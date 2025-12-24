@@ -2,12 +2,12 @@ import { getOSInfo } from "../utils.ts";
 import type { AIProvider } from "./interface.ts";
 
 export abstract class BaseProvider implements AIProvider {
-    protected abstract callAPI(prompt: string, systemPrompt: string): Promise<string>;
+	protected abstract callAPI(prompt: string, systemPrompt: string): Promise<string>;
 
-    async generate(prompt: string, systemPrompt?: string): Promise<string> {
-        const { platform, shell } = getOSInfo();
+	async generate(prompt: string, systemPrompt?: string): Promise<string> {
+		const { platform, shell } = getOSInfo();
 
-        const defaultSystemPrompt = `You are a CLI command generator. Return ONLY CSV format.
+		const defaultSystemPrompt = `You are a CLI command generator. Return ONLY CSV format.
 OS: ${platform}
 Shell: ${shell}
 Format: command;tools;comment
@@ -22,17 +22,13 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers`;
 
-        return this.callAPI(prompt, systemPrompt || defaultSystemPrompt);
-    }
+		return this.callAPI(prompt, systemPrompt || defaultSystemPrompt);
+	}
 
-    async generateWithContext(
-        prompt: string,
-        previousOutput: string,
-        iteration: number,
-    ): Promise<string> {
-        const { platform, shell } = getOSInfo();
+	async generateWithContext(prompt: string, previousOutput: string, iteration: number): Promise<string> {
+		const { platform, shell } = getOSInfo();
 
-        const systemPrompt = `You are a CLI command generator operating in agent mode. Return ONLY CSV format.
+		const systemPrompt = `You are a CLI command generator operating in agent mode. Return ONLY CSV format.
 OS: ${platform}
 Shell: ${shell}
 Format: command;tools;comment
@@ -52,16 +48,13 @@ Rules:
 Previous command output:
 ${previousOutput}`;
 
-        return this.callAPI(prompt, systemPrompt);
-    }
+		return this.callAPI(prompt, systemPrompt);
+	}
 
-    async retryWithMissingTool(
-        originalPrompt: string,
-        missingTools: string[],
-    ): Promise<string> {
-        const { platform, shell } = getOSInfo();
+	async retryWithMissingTool(originalPrompt: string, missingTools: string[]): Promise<string> {
+		const { platform, shell } = getOSInfo();
 
-        const systemPrompt = `You are a CLI command generator. Return ONLY CSV format.
+		const systemPrompt = `You are a CLI command generator. Return ONLY CSV format.
 OS: ${platform}
 Shell: ${shell}
 Format: command;tools;comment
@@ -77,6 +70,6 @@ Rules:
 - Do not include any text before or after the CSV lines
 - Do not include CSV headers`;
 
-        return this.callAPI(originalPrompt, systemPrompt);
-    }
+		return this.callAPI(originalPrompt, systemPrompt);
+	}
 }

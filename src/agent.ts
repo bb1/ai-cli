@@ -1,8 +1,8 @@
 import type { Config } from "./config.ts";
 import { executeCommand, validateTools } from "./executor.ts";
 import { extractAllTools, isAgentDone, parseResponse } from "./parser.ts";
-import { getProvider } from "./providers/index.ts";
 import { buildAgentSystemPrompt } from "./prompt.ts";
+import { getProvider } from "./providers/index.ts";
 import { checkCommandsSafety, formatSafetyWarnings } from "./safety.ts";
 import { bold, cyan, dim, green, logError, readLine, red, yellow } from "./utils.ts";
 

@@ -5,14 +5,14 @@ import { LMStudioProvider } from "./lmstudio.ts";
 import { OllamaProvider } from "./ollama.ts";
 
 export function getProvider(config: Config): AIProvider {
-    if (config.active_provider === "gemini") {
-        return new GeminiProvider(config);
-    }
-    if (config.active_provider === "lm_studio") {
-        return new LMStudioProvider(config);
-    }
-    // Default to Ollama
-    return new OllamaProvider(config);
+	if (config.active_provider === "gemini") {
+		return new GeminiProvider(config);
+	}
+	if (config.active_provider === "lm_studio") {
+		return new LMStudioProvider(config);
+	}
+	// Default to Ollama
+	return new OllamaProvider(config);
 }
 
 export type { AIProvider };
