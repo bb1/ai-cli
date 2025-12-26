@@ -29,9 +29,10 @@ jobs:
           OLLAMA_HOST: 0.0.0.0:11434
         options: >-
           --health-cmd "curl -f http://localhost:11434/api/tags || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 60s
 
     steps:
       - name: Checkout code
@@ -45,15 +46,23 @@ jobs:
 
       - name: Pull Ollama model
         run: |
-          # Wait for Ollama service to be ready
-          timeout 120 bash -c 'until curl -f http://localhost:11434/api/tags; do echo "Waiting for Ollama..."; sleep 5; done'
+          # Wait for Ollama service to be ready with extended timeout
+          for i in {1..120}; do
+            if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+              echo "Ollama is ready!"
+              break
+            fi
+            echo "Waiting for Ollama... (attempt $i)"
+            sleep 2
+          done
           
           # Pull a very small model (tinyllama is ~637MB, designed for CPU inference)
           echo "Pulling TinyLlama model for Ollama..."
           curl -X POST http://localhost:11434/api/pull \
             -H "Content-Type: application/json" \
             -d '{"name": "tinyllama"}' \
-            --max-time 600
+            --max-time 600 \
+            --connect-timeout 30
 
       - name: Start LM Studio
         run: |
@@ -62,35 +71,57 @@ jobs:
           docker run -d \
             --name lmstudio-compat \
             -p 1234:11434 \
-            --health-cmd "curl -f http://localhost:11434/api/tags || exit 1" \
-            --health-interval 10s \
-            --health-timeout 5s \
-            --health-retries 5 \
             ollama/ollama:latest
 
-          # Wait for the service to be ready
-          timeout 120 bash -c 'until curl -f http://localhost:1234/api/tags; do echo "Waiting for LM Studio compatible server..."; sleep 5; done'
+          # Wait for the service to be ready with extended timeout
+          for i in {1..120}; do
+            if curl -sf http://localhost:1234/api/tags > /dev/null 2>&1; then
+              echo "LM Studio compatible server is ready!"
+              break
+            fi
+            echo "Waiting for LM Studio... (attempt $i)"
+            sleep 2
+          done
           
           # Pull the same model for LM Studio
           echo "Pulling model for LM Studio..."
           curl -X POST http://localhost:1234/api/pull \
             -H "Content-Type: application/json" \
             -d '{"name": "tinyllama"}' \
-            --max-time 600
+            --max-time 600 \
+            --connect-timeout 30
 
-      - name: Wait for services
+      - name: Verify services are ready
         run: |
-          echo "Waiting for all services to be healthy..."
-          for i in {1..30}; do
-            if curl -f http://localhost:11434/api/tags && curl -f http://localhost:1234/api/tags; then
-              echo "All services are healthy!"
-              exit 0
+          echo "Verifying all services are healthy..."
+          
+          # Check Ollama
+          for i in {1..10}; do
+            if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+              echo "✓ Ollama is ready"
+              break
             fi
-            echo "Attempt $i: Services not ready yet, waiting..."
+            if [ $i -eq 10 ]; then
+              echo "✗ Ollama failed to become ready"
+              exit 1
+            fi
             sleep 2
           done
-          echo "Services failed to start"
-          exit 1
+          
+          # Check LM Studio
+          for i in {1..10}; do
+            if curl -sf http://localhost:1234/api/tags > /dev/null 2>&1; then
+              echo "✓ LM Studio is ready"
+              break
+            fi
+            if [ $i -eq 10 ]; then
+              echo "✗ LM Studio failed to become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          
+          echo "All services verified!"
 
       - name: Run integration tests
         env:
