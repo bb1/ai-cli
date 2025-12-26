@@ -7,6 +7,7 @@
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free";
 
 if (!OPENROUTER_KEY) {
 	console.error("Error: OPENROUTER_KEY environment variable is not set");
@@ -59,7 +60,7 @@ async function generateChangelog(commits: string[]): Promise<string> {
 	const prompt = `Generate a concise, meaningful changelog based on the following commit messages. 
 Format it as markdown with clear categories (e.g., ## Features, ## Bug Fixes, ## Improvements, etc.).
 Use markdown formatting: headers, bullet points, and emphasis where appropriate.
-Keep it brief and user-friendly. Only output the changelog in markdown format, no additional commentary or version numbers.
+Keep it brief and user-friendly. Avoid repetition. Only output the changelog in markdown format, no additional commentary or version numbers.
 
 Commit messages:
 ${commitsText}`;
@@ -71,7 +72,7 @@ ${commitsText}`;
 			Authorization: `Bearer ${OPENROUTER_KEY}`,
 		},
 		body: JSON.stringify({
-			model: "x-ai/grok-4.1-fast:free",
+			model: OPENROUTER_MODEL,
 			messages: [
 				{
 					role: "system",
@@ -133,4 +134,4 @@ main().catch((error) => {
 });
 
 // Make this file a module
-export {};
+export { };

@@ -11,6 +11,7 @@
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free";
 
 if (!OPENROUTER_KEY) {
 	console.error("Error: OPENROUTER_KEY environment variable is not set");
@@ -80,7 +81,7 @@ Respond with ONLY the bump type: "major", "minor", or "patch". Do not include th
 			Authorization: `Bearer ${OPENROUTER_KEY}`,
 		},
 		body: JSON.stringify({
-			model: "x-ai/grok-4.1-fast:free",
+			model: OPENROUTER_MODEL,
 			messages: [
 				{
 					role: "system",
@@ -198,4 +199,4 @@ main().catch((error) => {
 });
 
 // Make this file a module
-export {};
+export { };
