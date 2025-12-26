@@ -120,4 +120,3 @@ I need to check the user's SSH history to find the most common IP.`;
 		expect(result?.type).toBe("ready");
 	});
 });
-

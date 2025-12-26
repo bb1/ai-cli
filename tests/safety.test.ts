@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	checkCommandSafety,
-	checkCommandsSafety,
-	formatSafetyWarnings,
-} from "../src/safety.ts";
+import { checkCommandSafety, checkCommandsSafety, formatSafetyWarnings } from "../src/safety.ts";
 
 describe("checkCommandSafety", () => {
 	test("detects rm -rf /", () => {
@@ -104,9 +100,7 @@ describe("checkCommandsSafety", () => {
 
 		expect(result.isDangerous).toBe(true);
 		// Should have only one warning for recursive deletion pattern
-		const recursiveWarnings = result.warnings.filter((w) =>
-			w.reason.toLowerCase().includes("recursive"),
-		);
+		const recursiveWarnings = result.warnings.filter((w) => w.reason.toLowerCase().includes("recursive"));
 		expect(recursiveWarnings.length).toBe(1);
 	});
 
@@ -142,4 +136,3 @@ describe("formatSafetyWarnings", () => {
 		expect(formatted).toContain("Piping to shell");
 	});
 });
-

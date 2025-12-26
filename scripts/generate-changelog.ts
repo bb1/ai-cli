@@ -33,13 +33,10 @@ async function getLatestTag(): Promise<string | null> {
 // Get commits since the latest tag
 async function getCommitsSinceTag(tag: string | null): Promise<string[]> {
 	const range = tag ? `${tag}..HEAD` : "HEAD";
-	const proc = Bun.spawn(
-		["git", "log", range, "--pretty=format:%h %s"],
-		{
-			stdout: "pipe",
-			stderr: "pipe",
-		},
-	);
+	const proc = Bun.spawn(["git", "log", range, "--pretty=format:%h %s"], {
+		stdout: "pipe",
+		stderr: "pipe",
+	});
 
 	const exitCode = await proc.exited;
 	if (exitCode !== 0) {
@@ -48,9 +45,7 @@ async function getCommitsSinceTag(tag: string | null): Promise<string[]> {
 	}
 
 	const output = await new Response(proc.stdout).text();
-	return output
-		.split("\n")
-		.filter((line) => line.trim().length > 0);
+	return output.split("\n").filter((line) => line.trim().length > 0);
 }
 
 // Generate changelog using OpenRouter API
@@ -139,4 +134,3 @@ main().catch((error) => {
 
 // Make this file a module
 export {};
-

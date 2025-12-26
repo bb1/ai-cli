@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { unlink } from "node:fs/promises";
 import { type Config, getConfigPaths, loadConfig, saveConfig, validateConfig } from "../src/config.ts";
 
-async function fileExists(path: string): Promise<boolean> {
+async function _fileExists(path: string): Promise<boolean> {
 	return await Bun.file(path).exists();
 }
 
@@ -107,4 +107,3 @@ describe("saveConfig and loadConfig", () => {
 		}
 	});
 });
-

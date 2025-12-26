@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	extractAllTools,
-	isAgentDone,
-	parseResponse,
-} from "../src/parser.ts";
+import { extractAllTools, isAgentDone, parseResponse } from "../src/parser.ts";
 
 describe("parseResponse", () => {
 	test("parses a single command correctly", () => {
@@ -47,10 +43,7 @@ touch file.txt;touch;Create file`;
 	});
 
 	test("limits to 7 commands", () => {
-		const lines = Array.from(
-			{ length: 10 },
-			(_, i) => `echo ${i};echo;Line ${i}`,
-		);
+		const lines = Array.from({ length: 10 }, (_, i) => `echo ${i};echo;Line ${i}`);
 		const response = lines.join("\n");
 		const result = parseResponse(response);
 
@@ -179,4 +172,3 @@ describe("extractAllTools", () => {
 		expect(tools).toHaveLength(0);
 	});
 });
-

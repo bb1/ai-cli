@@ -110,14 +110,13 @@ export class GeminiProvider extends BaseProvider {
 
 			const response = await fetch(
 				"https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?" +
-				params.toString(),
+					params.toString(),
 				{
 					method: "POST",
 					headers: {
 						Cookie: cookieHeader,
 						"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-						"User-Agent":
-							"Mozilla/5.0 (Windows NT 10.0; rv:123.0) Gecko/20100101 Firefox/123.0",
+						"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:123.0) Gecko/20100101 Firefox/123.0",
 						Accept: "*/*",
 						"Accept-Language": "en-US,en;q=0.5",
 						Referer: "https://gemini.google.com/",

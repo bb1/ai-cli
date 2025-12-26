@@ -1,4 +1,4 @@
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // Mock fetch globally
 const originalFetch = globalThis.fetch;
@@ -30,10 +30,7 @@ afterEach(() => {
 });
 
 // Test version calculation logic
-function calculateNewVersion(
-	currentVersion: string,
-	bumpType: "major" | "minor" | "patch",
-): string {
+function calculateNewVersion(currentVersion: string, bumpType: "major" | "minor" | "patch"): string {
 	const [major, minor, patch] = currentVersion.split(".").map(Number);
 
 	switch (bumpType) {
@@ -103,4 +100,3 @@ describe("bump type parsing", () => {
 		expect(responseText.includes("patch")).toBe(false);
 	});
 });
-

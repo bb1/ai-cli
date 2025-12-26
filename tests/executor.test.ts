@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	checkBinaryExists,
-	executeCommand,
-	validateTools,
-} from "../src/executor.ts";
+import { checkBinaryExists, executeCommand, validateTools } from "../src/executor.ts";
 
 describe("checkBinaryExists", () => {
 	test("finds common system binaries", () => {
@@ -105,4 +101,3 @@ describe("executeCommand", () => {
 		// Note: This might not work as expected due to how shell processes &&
 	});
 });
-

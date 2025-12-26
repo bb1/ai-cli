@@ -37,13 +37,10 @@ async function getLatestTag(): Promise<string | null> {
 // Get commits since the latest tag
 async function getCommitsSinceTag(tag: string | null): Promise<string[]> {
 	const range = tag ? `${tag}..HEAD` : "HEAD";
-	const proc = Bun.spawn(
-		["git", "log", range, "--pretty=format:%h %s"],
-		{
-			stdout: "pipe",
-			stderr: "pipe",
-		},
-	);
+	const proc = Bun.spawn(["git", "log", range, "--pretty=format:%h %s"], {
+		stdout: "pipe",
+		stderr: "pipe",
+	});
 
 	const exitCode = await proc.exited;
 	if (exitCode !== 0) {
@@ -52,16 +49,11 @@ async function getCommitsSinceTag(tag: string | null): Promise<string[]> {
 	}
 
 	const output = await new Response(proc.stdout).text();
-	return output
-		.split("\n")
-		.filter((line) => line.trim().length > 0);
+	return output.split("\n").filter((line) => line.trim().length > 0);
 }
 
 // Determine version bump type using OpenRouter API
-async function determineBumpType(
-	commits: string[],
-	currentVersion: string,
-): Promise<"major" | "minor" | "patch"> {
+async function determineBumpType(commits: string[], _currentVersion: string): Promise<"major" | "minor" | "patch"> {
 	if (commits.length === 0) {
 		// No commits, default to patch
 		return "patch";
@@ -117,7 +109,7 @@ Respond with ONLY the bump type: "major", "minor", or "patch". Do not include th
 	};
 
 	const responseText = data.choices[0]?.message?.content?.trim().toLowerCase() || "";
-	
+
 	// Extract the bump type from the response
 	if (responseText.includes("major")) {
 		return "major";
@@ -133,10 +125,7 @@ Respond with ONLY the bump type: "major", "minor", or "patch". Do not include th
 }
 
 // Calculate new version based on bump type
-function calculateNewVersion(
-	currentVersion: string,
-	bumpType: "major" | "minor" | "patch",
-): string {
+function calculateNewVersion(currentVersion: string, bumpType: "major" | "minor" | "patch"): string {
 	const [major, minor, patch] = currentVersion.split(".").map(Number);
 
 	switch (bumpType) {
@@ -152,7 +141,7 @@ function calculateNewVersion(
 // Main execution
 async function main() {
 	const packageJsonPath = "package.json";
-	const packageJson = await Bun.file(packageJsonPath).json() as { version: string };
+	const packageJson = (await Bun.file(packageJsonPath).json()) as { version: string };
 
 	const currentVersion = packageJson.version;
 	console.error(`Current version: ${currentVersion}`);
@@ -176,7 +165,7 @@ async function main() {
 		console.error(`New version: ${newVersion} (${bumpType})`);
 
 		packageJson.version = newVersion;
-		await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+		await Bun.write(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
 		console.log(`version=${newVersion}`);
 		console.log(`tag=v${newVersion}`);
@@ -195,7 +184,7 @@ async function main() {
 
 	// Update package.json
 	packageJson.version = newVersion;
-	await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+	await Bun.write(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
 	// Output for GitHub Actions
 	console.log(`version=${newVersion}`);
@@ -210,4 +199,3 @@ main().catch((error) => {
 
 // Make this file a module
 export {};
-

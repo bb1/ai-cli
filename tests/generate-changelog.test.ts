@@ -1,4 +1,4 @@
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // Mock fetch globally
 const originalFetch = globalThis.fetch;
@@ -37,19 +37,9 @@ describe("changelog generation", () => {
 	});
 
 	test("filters empty commit lines", () => {
-		const commits = [
-			"abc123 feat: add feature",
-			"",
-			"def456 fix: bug",
-			"   ",
-			"ghi789 docs: update",
-		];
+		const commits = ["abc123 feat: add feature", "", "def456 fix: bug", "   ", "ghi789 docs: update"];
 		const filtered = commits.filter((line) => line.trim().length > 0);
-		expect(filtered).toEqual([
-			"abc123 feat: add feature",
-			"def456 fix: bug",
-			"ghi789 docs: update",
-		]);
+		expect(filtered).toEqual(["abc123 feat: add feature", "def456 fix: bug", "ghi789 docs: update"]);
 	});
 
 	test("handles empty commit list", () => {
@@ -89,4 +79,3 @@ describe("changelog format validation", () => {
 		expect(changelog.trim()).toBe("");
 	});
 });
-

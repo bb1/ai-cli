@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { parseArgs } from "util";
+import { parseArgs } from "node:util";
 
 const args = parseArgs({
 	args: Bun.argv.slice(2),
@@ -12,16 +12,11 @@ const args = parseArgs({
 });
 
 // Read version from package.json
-const packageJson = await Bun.file("package.json").json() as { version: string };
+const packageJson = (await Bun.file("package.json").json()) as { version: string };
 const version = packageJson.version;
 
 // Build command arguments
-const buildArgs = [
-	"build",
-	"src/index.ts",
-	"--compile",
-	`--define=process.env.AI_CLI_VERSION="${version}"`,
-];
+const buildArgs = ["build", "src/index.ts", "--compile", `--define=process.env.AI_CLI_VERSION="${version}"`];
 
 if (args.values.target) {
 	buildArgs.push(`--target=${args.values.target}`);
@@ -39,4 +34,3 @@ const proc = Bun.spawn(["bun", ...buildArgs], {
 
 const exitCode = await proc.exited;
 process.exit(exitCode);
-
