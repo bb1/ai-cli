@@ -1,5 +1,6 @@
 import { type Config, saveConfig } from "../config.ts";
 import { BaseProvider } from "./base.ts";
+import { buildGeminiSearchParams, formatGeminiRequestBody } from "./gemini_formatter.ts";
 import { parseGeminiResponse } from "./gemini_parser.ts";
 
 export class GeminiProvider extends BaseProvider {
@@ -102,16 +103,10 @@ export class GeminiProvider extends BaseProvider {
 		const snlm0e = await this.getSNlM0e();
 		const cookieHeader = this.getCookieHeader();
 
-		const params = new URLSearchParams();
-		params.append("bl", this.bl || "boq_assistant-bard-web-server_20240519.16_p0");
-		params.append("_reqid", Math.floor(Math.random() * 100000).toString());
-		params.append("rt", "c");
+		const params = buildGeminiSearchParams(this.bl || "boq_assistant-bard-web-server_20240519.16_p0");
 
 		try {
-			// fix conversation-id to be strictly valid json struct for new chat
-			const message = `SYSTEM:\n${systemPrompt}\n\nUSER:\n${prompt}`;
-			const innerPayload = `[[${JSON.stringify(message)},null,["",null,null,null,null,[]]]`;
-			const fReq = JSON.stringify([null, innerPayload]);
+			const requestBody = formatGeminiRequestBody({ message: prompt, systemPrompt }, snlm0e);
 
 			const response = await fetch(
 				"https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?" +
@@ -125,9 +120,7 @@ export class GeminiProvider extends BaseProvider {
 							"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 						"X-Same-Domain": "1",
 					},
-					// This body is highly specific and likely needs a proper encoder.
-					// For the first pass, we will try to just signal intent or fail gracefully if we can't implement the full protocol.
-					body: `f.req=${encodeURIComponent(fReq)}&at=${snlm0e}`,
+					body: requestBody,
 				},
 			);
 
