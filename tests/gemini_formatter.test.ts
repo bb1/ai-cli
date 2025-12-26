@@ -37,26 +37,25 @@ describe("Gemini Formatter", () => {
     describe("buildMessageArray", () => {
         test("builds message array with correct structure", () => {
             const result = buildMessageArray("Hello");
-            expect(result).toEqual(["Hello", 0, null, null, null, null, 0]);
+            expect(result).toEqual(["Hello"]);
         });
 
         test("builds message array with system prompt", () => {
             const result = buildMessageArray("Hello", "Be helpful");
             expect(result[0]).toBe("SYSTEM:\nBe helpful\n\nUSER:\nHello");
-            expect(result[1]).toBe(0);
-            expect(result.length).toBe(7);
+            expect(result.length).toBe(1);
         });
     });
 
     describe("buildContextArray", () => {
-        test("builds context with empty values for new conversation", () => {
+        test("builds context with null values for new conversation", () => {
             const options: GeminiRequestOptions = { message: "Hello" };
             const result = buildContextArray(options);
 
-            expect(result[0]).toBe(""); // conversationId
+            expect(result[0]).toBeNull(); // conversationId
             expect(result[1]).toBeNull(); // responseId
             expect(result[2]).toBeNull(); // choiceId
-            expect(result.length).toBe(10);
+            expect(result.length).toBe(3);
         });
 
         test("builds context with conversation IDs", () => {
@@ -71,6 +70,7 @@ describe("Gemini Formatter", () => {
             expect(result[0]).toBe("c_123");
             expect(result[1]).toBe("r_456");
             expect(result[2]).toBe("rc_789");
+            expect(result.length).toBe(3);
         });
     });
 
@@ -81,20 +81,13 @@ describe("Gemini Formatter", () => {
             const parsed = JSON.parse(result);
 
             expect(parsed).toBeArray();
-            // Message array at index 0
-            expect(parsed[0]).toEqual(["Hello", 0, null, null, null, null, 0]);
-            // Language array at index 1
-            expect(parsed[1]).toEqual(["en"]);
-            // Context array at index 2
-            expect(parsed[2][0]).toBe(""); // conversationId
-        });
-
-        test("builds payload with custom language", () => {
-            const options: GeminiRequestOptions = { message: "Hallo", language: "de" };
-            const result = buildInnerPayload(options);
-            const parsed = JSON.parse(result);
-
-            expect(parsed[1]).toEqual(["de"]);
+            expect(parsed.length).toBe(3);
+            // Message array at index 0: [prompt]
+            expect(parsed[0]).toEqual(["Hello"]);
+            // Null at index 1
+            expect(parsed[1]).toBeNull();
+            // Context array at index 2: [cid, rid, rcid]
+            expect(parsed[2]).toEqual([null, null, null]);
         });
 
         test("builds payload with conversation context", () => {
@@ -107,6 +100,8 @@ describe("Gemini Formatter", () => {
             const result = buildInnerPayload(options);
             const parsed = JSON.parse(result);
 
+            expect(parsed[0]).toEqual(["Continue"]);
+            expect(parsed[1]).toBeNull();
             expect(parsed[2][0]).toBe("c_test123");
             expect(parsed[2][1]).toBe("r_test456");
             expect(parsed[2][2]).toBe("rc_test789");
@@ -177,8 +172,18 @@ describe("Gemini Formatter", () => {
             const params = buildGeminiSearchParams("test");
             const reqid = params.get("_reqid");
             expect(reqid).not.toBeNull();
-            expect(Number.parseInt(reqid!)).toBeLessThan(100000);
+            expect(Number.parseInt(reqid!)).toBeLessThan(1000000);
             expect(Number.parseInt(reqid!)).toBeGreaterThanOrEqual(0);
+        });
+
+        test("includes hl parameter for language", () => {
+            const params = buildGeminiSearchParams("test", "de");
+            expect(params.get("hl")).toBe("de");
+        });
+
+        test("defaults hl to en", () => {
+            const params = buildGeminiSearchParams("test");
+            expect(params.get("hl")).toBe("en");
         });
 
         test("includes rt=c parameter", () => {
@@ -325,8 +330,8 @@ describe("Real-world API Format Tests", () => {
     });
 
     describe("Request format verification", () => {
-        test("request format matches real API structure", () => {
-            // Real format: [null, "[[msg,0,null,...],["en"],[context...],...]"]
+        test("request format matches python-gemini-api structure", () => {
+            // Format: [null, "[[prompt], null, [cid, rid, rcid]]"]
             const options: GeminiRequestOptions = { message: "What is your assignment?" };
             const fReq = buildFReq(options);
             const parsed = JSON.parse(fReq);
@@ -335,15 +340,15 @@ describe("Real-world API Format Tests", () => {
             expect(parsed[0]).toBeNull();
             expect(typeof parsed[1]).toBe("string");
 
-            // Inner structure
+            // Inner structure: [[prompt], null, [cid, rid, rcid]]
             const inner = JSON.parse(parsed[1]);
-            // [0] = message array: [msg, 0, null, null, null, null, 0]
-            expect(inner[0][1]).toBe(0);
-            expect(inner[0].length).toBe(7);
-            // [1] = language array: ["en"]
-            expect(inner[1]).toEqual(["en"]);
-            // [2] = context array
-            expect(inner[2]).toBeArray();
+            expect(inner.length).toBe(3);
+            // [0] = message array: [msg]
+            expect(inner[0]).toEqual(["What is your assignment?"]);
+            // [1] = null
+            expect(inner[1]).toBeNull();
+            // [2] = context array: [null, null, null] for new conversation
+            expect(inner[2]).toEqual([null, null, null]);
         });
 
         test("document real request format structure - PCck7e", () => {
@@ -412,7 +417,7 @@ describe("Real-world API Format Tests", () => {
 
             const inner = JSON.parse(parsed[1]);
             expect(inner[0][0]).toBe("What is your assignment?");
-            expect(inner[1]).toEqual(["en"]);
+            expect(inner[1]).toBeNull();
             expect(inner[2][0]).toBe("c_223d949670c9e5ef");
             expect(inner[2][1]).toBe("r_e0343c7d3f963e0d");
             expect(inner[2][2]).toBe("rc_a8d1bcd6f1a8b59a");
