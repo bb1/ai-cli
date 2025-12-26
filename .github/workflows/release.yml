@@ -25,84 +25,17 @@ jobs:
       - name: Run tests
         run: bun run test
 
-  build:
-    name: Build ${{ matrix.os }} ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    needs: test-and-lint
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: x64
-            target: linux-x64
-            script: build:linux-x64
-            binary: ai-linux-x64
-            archive: ai-linux-x64.zip
-          - os: ubuntu-latest
-            arch: arm64
-            target: linux-arm64
-            script: build:linux-arm64
-            binary: ai-linux-arm64
-            archive: ai-linux-arm64.zip
-          - os: macos-latest
-            arch: x64
-            target: darwin-x64
-            script: build:darwin-x64
-            binary: ai-darwin-x64
-            archive: ai-darwin-x64.zip
-          - os: macos-latest
-            arch: arm64
-            target: darwin-arm64
-            script: build:darwin-arm64
-            binary: ai-darwin-arm64
-            archive: ai-darwin-arm64.zip
-          - os: windows-latest
-            arch: x64
-            target: windows-x64
-            script: build:windows-x64
-            binary: ai-windows-x64.exe
-            archive: ai-windows-x64.zip
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build binary
-        run: bun run ${{ matrix.script }}
-
-      - name: Create release archive (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        shell: bash
-        run: |
-          chmod +x ${{ matrix.binary }}
-          zip ${{ matrix.archive }} ${{ matrix.binary }}
-
-      - name: Create release archive (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          Compress-Archive -Path ${{ matrix.binary }} -DestinationPath ${{ matrix.archive }} -Force
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.target }}
-          path: ${{ matrix.archive }}
-
-  release:
-    name: Build and Release
+  bump-version:
+    name: Bump Version
     runs-on: ubuntu-latest
-    needs: build
+    needs: test-and-lint
+    outputs:
+      version: ${{ steps.bump-version.outputs.version }}
+      tag: ${{ steps.bump-version.outputs.tag }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -162,6 +95,86 @@ jobs:
             }
           }
 
+  build:
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    needs: bump-version
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            target: linux-x64
+            script: build:linux-x64
+            binary: ai-linux-x64
+            archive: ai-linux-x64.zip
+          - os: ubuntu-latest
+            arch: arm64
+            target: linux-arm64
+            script: build:linux-arm64
+            binary: ai-linux-arm64
+            archive: ai-linux-arm64.zip
+          - os: macos-latest
+            arch: x64
+            target: darwin-x64
+            script: build:darwin-x64
+            binary: ai-darwin-x64
+            archive: ai-darwin-x64.zip
+          - os: macos-latest
+            arch: arm64
+            target: darwin-arm64
+            script: build:darwin-arm64
+            binary: ai-darwin-arm64
+            archive: ai-darwin-arm64.zip
+          - os: windows-latest
+            arch: x64
+            target: windows-x64
+            script: build:windows-x64
+            binary: ai-windows-x64.exe
+            archive: ai-windows-x64.zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump-version.outputs.tag }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binary
+        run: bun run ${{ matrix.script }}
+
+      - name: Create release archive (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          chmod +x ${{ matrix.binary }}
+          zip ${{ matrix.archive }} ${{ matrix.binary }}
+
+      - name: Create release archive (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ${{ matrix.binary }} -DestinationPath ${{ matrix.archive }} -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ matrix.archive }}
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [bump-version, build]
+    permissions:
+      contents: write
+
+    steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -170,10 +183,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.bump-version.outputs.tag }}
-          name: Release ${{ steps.bump-version.outputs.version }}
-          body: ${{ steps.changelog.outputs.changelog }}
+          tag_name: ${{ needs.bump-version.outputs.tag }}
+          name: Release ${{ needs.bump-version.outputs.version }}
+          body: ${{ needs.bump-version.outputs.changelog }}
           files: artifacts/**/*.zip
           draft: false
           prerelease: false
+
 

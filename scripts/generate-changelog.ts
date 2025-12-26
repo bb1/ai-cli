@@ -60,7 +60,9 @@ async function generateChangelog(commits: string[]): Promise<string> {
 	const prompt = `Generate a concise, meaningful changelog based on the following commit messages. 
 Format it as markdown with clear categories (e.g., ## Features, ## Bug Fixes, ## Improvements, etc.).
 Use markdown formatting: headers, bullet points, and emphasis where appropriate.
-Keep it brief and user-friendly. Avoid repetition. Only output the changelog in markdown format, no additional commentary or version numbers.
+Keep it brief and user-friendly. Avoid repetition. 
+If a new feature is added, only include it once and ignore all bug fixes and improvements related to it.
+Only output the changelog in markdown format, no additional commentary or version numbers.
 
 Commit messages:
 ${commitsText}`;
@@ -134,4 +136,4 @@ main().catch((error) => {
 });
 
 // Make this file a module
-export {};
+export { };
