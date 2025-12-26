@@ -5,8 +5,8 @@
  */
 
 import type { Config } from "../src/config.ts";
-import { OllamaProvider } from "../src/providers/ollama.ts";
 import { LMStudioProvider } from "../src/providers/lmstudio.ts";
+import { OllamaProvider } from "../src/providers/ollama.ts";
 
 interface TestResult {
 	name: string;
@@ -18,10 +18,7 @@ interface TestResult {
 const results: TestResult[] = [];
 
 // Helper function to measure execution time
-async function measureTest<T>(
-	name: string,
-	testFn: () => Promise<T>,
-): Promise<T> {
+async function measureTest<T>(name: string, testFn: () => Promise<T>): Promise<T> {
 	const start = performance.now();
 	try {
 		const result = await testFn();
@@ -133,18 +130,14 @@ async function testLMStudioProvider() {
 		});
 
 		if (!response.ok) {
-			throw new Error(
-				`API call failed with status ${response.status}: ${response.statusText}`,
-			);
+			throw new Error(`API call failed with status ${response.status}: ${response.statusText}`);
 		}
 
 		const data = (await response.json()) as { response: string; done: boolean };
 		if (!data.response) {
 			throw new Error("Empty response from LM Studio compatible server");
 		}
-		console.log(
-			`  ✓ Received response: "${data.response.substring(0, 50)}..."`,
-		);
+		console.log(`  ✓ Received response: "${data.response.substring(0, 50)}..."`);
 	});
 
 	// Test 3: Generate using provider
@@ -174,9 +167,7 @@ async function checkServiceHealth() {
 			throw new Error(`Ollama returned status ${ollamaResponse.status}`);
 		}
 	} catch (error) {
-		console.error(
-			`  ✗ Ollama health check failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
+		console.error(`  ✗ Ollama health check failed: ${error instanceof Error ? error.message : String(error)}`);
 		throw error;
 	}
 
@@ -188,16 +179,14 @@ async function checkServiceHealth() {
 			throw new Error(`LM Studio returned status ${lmstudioResponse.status}`);
 		}
 	} catch (error) {
-		console.error(
-			`  ✗ LM Studio health check failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
+		console.error(`  ✗ LM Studio health check failed: ${error instanceof Error ? error.message : String(error)}`);
 		throw error;
 	}
 }
 
 // Print test results
 function printResults() {
-	console.log("\n" + "=".repeat(60));
+	console.log(`\n${"=".repeat(60)}`);
 	console.log("📊 Test Results Summary");
 	console.log("=".repeat(60));
 
@@ -209,9 +198,7 @@ function printResults() {
 		const statusColor = result.passed ? "\x1b[32m" : "\x1b[31m";
 		const resetColor = "\x1b[0m";
 
-		console.log(
-			`${statusColor}${status}${resetColor} ${result.name} (${result.duration}ms)`,
-		);
+		console.log(`${statusColor}${status}${resetColor} ${result.name} (${result.duration}ms)`);
 
 		if (result.error) {
 			console.log(`  Error: ${result.error}`);
@@ -226,16 +213,12 @@ function printResults() {
 
 	console.log("=".repeat(60));
 	console.log(`Total: ${results.length} | Passed: ${passCount} | Failed: ${failCount}`);
-	console.log("=".repeat(60) + "\n");
-
-	return failCount === 0;
+	console.log(`${"=".repeat(60)}\n`);
 }
 
 // Main execution
 async function main() {
-	console.log(
-		"🚀 Starting Integration Tests for Ollama and LM Studio\n",
-	);
+	console.log("🚀 Starting Integration Tests for Ollama and LM Studio\n");
 
 	try {
 		// First check if services are healthy
@@ -249,10 +232,7 @@ async function main() {
 		const allPassed = printResults();
 		process.exit(allPassed ? 0 : 1);
 	} catch (error) {
-		console.error(
-			"\n❌ Test execution failed:",
-			error instanceof Error ? error.message : String(error),
-		);
+		console.error("\n❌ Test execution failed:", error instanceof Error ? error.message : String(error));
 		printResults();
 		process.exit(1);
 	}
