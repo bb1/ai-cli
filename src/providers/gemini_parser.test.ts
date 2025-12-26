@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseGeminiResponse } from "../src/providers/gemini_parser";
+import { parseGeminiResponse } from "./gemini_parser";
 
 describe("Gemini Parser", () => {
 	describe("XSSI prefix handling", () => {

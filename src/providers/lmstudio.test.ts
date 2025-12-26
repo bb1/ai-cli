@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { Config } from "../src/config.ts";
-import { LMStudioProvider } from "../src/providers/lmstudio.ts";
+import type { Config } from "../config.ts";
+import { LMStudioProvider } from "./lmstudio.ts";
 
 const mockConfig: Config = {
 	active_provider: "lm_studio",

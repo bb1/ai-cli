@@ -8,8 +8,8 @@ import {
 	formatGeminiRequestBody,
 	formatMessage,
 	type GeminiRequestOptions,
-} from "../src/providers/gemini_formatter";
-import { parseGeminiResponse } from "../src/providers/gemini_parser";
+} from "./gemini_formatter";
+import { parseGeminiResponse } from "./gemini_parser";
 
 describe("Gemini Formatter", () => {
 	describe("formatMessage", () => {

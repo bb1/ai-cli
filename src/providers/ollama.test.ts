@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { Config } from "../src/config.ts";
-import { OllamaProvider } from "../src/providers/ollama.ts";
+import type { Config } from "../config.ts";
+import { OllamaProvider } from "./ollama.ts";
 
 const mockConfig: Config = {
 	active_provider: "ollama",

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Config } from "../src/config";
-import { GeminiProvider } from "../src/providers/gemini";
+import type { Config } from "../config";
+import { GeminiProvider } from "./gemini";
 
 // This test requires environment variables to be set in .env
 // TEST_GEMINI_COOKIE_PSID

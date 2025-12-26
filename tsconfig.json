@@ -14,7 +14,7 @@
     "lib": ["ES2022"],
     "outDir": "./dist"
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist"]
 }
 
