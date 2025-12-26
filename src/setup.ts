@@ -433,8 +433,8 @@ export async function runSetup(): Promise<Config> {
 	await saveConfig(config, true);
 	logSuccess("\nConfiguration saved to ~/.ai-config.toml");
 	if (provider === "ollama") {
-		console.log(cyan(`  Ollama URL: ${config.ollama.url}`));
-		console.log(cyan(`  Model: ${config.ollama.model}\n`));
+		console.log(cyan(`  Ollama URL: ${config.ollama?.url}`));
+		console.log(cyan(`  Model: ${config.ollama?.model}\n`));
 	} else if (provider === "lm_studio" && config.lm_studio) {
 		console.log(cyan(`  LM Studio URL: ${config.lm_studio.url}`));
 		console.log(cyan(`  Model: ${config.lm_studio.model}\n`));
