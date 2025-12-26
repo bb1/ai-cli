@@ -199,4 +199,4 @@ main().catch((error) => {
 });
 
 // Make this file a module
-export { };
+export {};
